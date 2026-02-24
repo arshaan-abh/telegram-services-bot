@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "api-patterns": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "99d138cd0b07e848c4581784444677e5d46cbba1588b3af2683f923a892deb57"
+    },
+    "bullmq-specialist": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "be1b2ac86f8efd11af6de55575e87de7305a09ad5db66e64a8052038c6a5c554"
+    },
+    "coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "574803faf98d8a698c2b2151d7ed211208bb084320d411bd3a0919e6b08e48f6"
+    },
+    "e2e-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "2326461341dddc86472cea1a0cb19fe6c28dee1ba2daa69a723dc7564ac8bd09"
+    },
+    "javascript-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "eddcc9d11a1ae9628e1b73a3c06dbb200d1be6280ba82a144a0a224141bc4a5f"
+    },
+    "neon-postgres": {
+      "source": "neondatabase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "c07eb8fc93166dea894138fa38e3b2431e5f11906c77077f4ed2b5f489daf1fa"
+    },
+    "nodejs-backend-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "7f1bf288467c197bde7cb8e4beb9d3568d61ef0d0d3d702b58394ea656757185"
+    },
+    "prompt-engineering-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "39b63660efb658152f61944b8dc5a05f6290786950474d0d20b75f03e8242aea"
+    },
+    "stripe-integration": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "997f806687334ec6f6d90fd9e6cc7159eb9a827b735e070aded56544efa8e857"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "tdd-workflow": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "b043ab9a253352d5ab49d359cf8f92b9826f6008daf9a9831fd0445c09482df4"
+    },
+    "workflow-automation": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "5b13a8e42672e8542aab386470964727fc538d12855ad46791b855a921164bdc"
+    }
+  }
+}
