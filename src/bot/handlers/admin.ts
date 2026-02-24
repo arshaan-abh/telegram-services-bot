@@ -1,0 +1,139 @@
+import { InlineKeyboard } from "grammy";
+
+import { CALLBACKS } from "../../config/constants.js";
+import { env } from "../../config/env.js";
+import {
+  createAuditLog,
+  listRecentAuditLogs,
+} from "../../db/repositories/audit.js";
+import { listPendingOrders } from "../../db/repositories/orders.js";
+import { createAndScheduleNotification } from "../../services/notifications.js";
+import type { BotContext } from "../context.js";
+import { formatAdminOrderFields } from "../messages.js";
+
+export function ensureAdmin(ctx: BotContext): boolean {
+  if (!ctx.isAdmin) {
+    void ctx.reply(ctx.t("admin-denied"));
+    return false;
+  }
+
+  return true;
+}
+
+export async function sendPendingOrders(ctx: BotContext): Promise<void> {
+  if (!ensureAdmin(ctx)) {
+    return;
+  }
+
+  const pending = await listPendingOrders();
+  if (pending.length === 0) {
+    await ctx.reply(ctx.t("admin-pending-empty"));
+    return;
+  }
+
+  await ctx.reply(ctx.t("admin-pending-title"));
+
+  for (const entry of pending) {
+    const fields = formatAdminOrderFields(entry.order.neededFieldValues);
+    const userName = entry.username ?? entry.firstName;
+
+    const text = ctx.t("admin-order-card", {
+      orderId: entry.order.id,
+      user: `${userName} (${entry.userTelegramId})`,
+      service: entry.serviceTitle,
+      base: entry.order.basePrice,
+      discount: entry.order.discountAmount,
+      credit: entry.order.creditAmount,
+      payable: entry.order.payableAmount,
+      unit: env.PRICE_UNIT,
+      fields,
+    });
+
+    const keyboard = new InlineKeyboard()
+      .text("Done", CALLBACKS.adminOrderDone(entry.order.id))
+      .text("Dismiss", CALLBACKS.adminOrderDismiss(entry.order.id))
+      .row()
+      .text("Contact", CALLBACKS.adminOrderContact(entry.order.id));
+
+    await ctx.reply(text, {
+      reply_markup: keyboard,
+    });
+  }
+}
+
+export async function notifyAdminOrderQueued(
+  ctx: BotContext,
+  orderId: string,
+): Promise<void> {
+  const keyboard = new InlineKeyboard()
+    .text("View", CALLBACKS.adminOrderView(orderId))
+    .text("Done", CALLBACKS.adminOrderDone(orderId))
+    .row()
+    .text("Dismiss", CALLBACKS.adminOrderDismiss(orderId))
+    .text("Contact", CALLBACKS.adminOrderContact(orderId));
+
+  await ctx.api.sendMessage(
+    env.ADMIN_TELEGRAM_ID,
+    `New order waiting review: ${orderId}`,
+    {
+      reply_markup: keyboard,
+    },
+  );
+}
+
+export async function sendAuditQuickView(ctx: BotContext): Promise<void> {
+  if (!ensureAdmin(ctx)) {
+    return;
+  }
+
+  const logs = await listRecentAuditLogs(10);
+  if (logs.length === 0) {
+    await ctx.reply("No audit logs yet.");
+    return;
+  }
+
+  const lines = logs.map(
+    (log) =>
+      `${log.createdAt.toISOString()} | ${log.action} | ${log.entityType}:${log.entityId}`,
+  );
+  await ctx.reply(lines.join("\n"));
+}
+
+export async function scheduleAdminNotification(input: {
+  ctx: BotContext;
+  audience: "user" | "all" | "service_subscribers";
+  text: string;
+  sendAt: Date;
+  userId?: string;
+  serviceId?: string;
+}) {
+  if (!ensureAdmin(input.ctx)) {
+    return;
+  }
+
+  await createAndScheduleNotification({
+    audience: input.audience,
+    userId: input.userId,
+    serviceId: input.serviceId,
+    messageKey: "admin_custom",
+    messagePayload: {
+      text: input.text,
+    },
+    sendAt: input.sendAt,
+    createdBy: String(input.ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+  });
+
+  await createAuditLog({
+    actorTelegramId: String(input.ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+    actorUserId: input.ctx.dbUserId,
+    action: "notification.create",
+    entityType: "notification",
+    entityId: "manual",
+    metadata: {
+      audience: input.audience,
+      sendAt: input.sendAt.toISOString(),
+    },
+  });
+
+  await input.ctx.reply(input.ctx.t("notification-created"));
+}

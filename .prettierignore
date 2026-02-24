@@ -1,5 +1,8 @@
 # Ignore artifacts:
+dist
 build
 coverage
+node_modules
 
+drizzle
 pnpm-lock.yaml

@@ -1,0 +1,64 @@
+import { Conversation } from "@grammyjs/conversations";
+
+import { getOrderWithUserAndService } from "../../db/repositories/orders.js";
+import { dismissOrderByAdmin } from "../../services/orders.js";
+import type { BotContext } from "../context.js";
+
+async function waitForText(
+  conversation: Conversation<BotContext, BotContext>,
+): Promise<string> {
+  const update = await conversation.waitFor(":text");
+  if (!update.message || !("text" in update.message)) {
+    await update.reply(update.t("error-generic"));
+    return "";
+  }
+
+  return update.message.text.trim();
+}
+
+export async function dismissOrderConversation(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  orderId: string,
+): Promise<void> {
+  if (!ctx.isAdmin) {
+    await ctx.reply(ctx.t("admin-denied"));
+    return;
+  }
+
+  await ctx.reply(ctx.t("admin-dismiss-reason-ask"));
+  const reason = await waitForText(conversation);
+
+  if (reason.length === 0) {
+    await ctx.reply(ctx.t("error-generic"));
+    return;
+  }
+
+  await ctx.reply(
+    `${ctx.t("admin-dismiss-confirm")}\n\n${reason}\n\nType YES to confirm.`,
+  );
+  const confirmation = (await waitForText(conversation)).toLowerCase();
+
+  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
+    await ctx.reply("Dismiss cancelled.");
+    return;
+  }
+
+  const order = await conversation.external(() =>
+    dismissOrderByAdmin(orderId, String(ctx.from?.id), reason),
+  );
+  const orderContext = await conversation.external(() =>
+    getOrderWithUserAndService(order.id),
+  );
+
+  if (orderContext) {
+    await ctx.api.sendMessage(
+      orderContext.user.telegramId,
+      ctx.t("admin-order-dismissed-user", {
+        reason,
+      }),
+    );
+  }
+
+  await ctx.reply(ctx.t("admin-dismiss-confirmed"));
+}
