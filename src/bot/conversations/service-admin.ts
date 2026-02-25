@@ -12,13 +12,16 @@ import type { BotContext } from "../context.js";
 
 const moneySchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
 const durationSchema = z.coerce.number().int().min(1).max(255);
+const titleSchema = z.string().min(2);
+
+const CONFIRM_YES = new Set(["yes", "y", "بله", "اره"]);
 
 async function ask(
   conversation: Conversation<BotContext, BotContext>,
   ctx: BotContext,
-  prompt: string,
+  promptKey: string,
 ): Promise<string> {
-  await ctx.reply(prompt);
+  await ctx.reply(ctx.t(promptKey));
   const update = await conversation.waitFor(":text");
   if (!update.message || !("text" in update.message)) {
     await update.reply(update.t("error-generic"));
@@ -26,6 +29,27 @@ async function ask(
   }
 
   return update.message.text.trim();
+}
+
+async function askWithSchema<T>(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+  schema: z.ZodType<T>,
+  errorKey: string,
+): Promise<T> {
+  while (true) {
+    const raw = await ask(conversation, ctx, promptKey);
+    const parsed = schema.safeParse(raw);
+    if (parsed.success) {
+      return parsed.data;
+    }
+    await ctx.reply(ctx.t(errorKey));
+  }
+}
+
+function isAffirmative(value: string): boolean {
+  return CONFIRM_YES.has(value.toLowerCase());
 }
 
 function parseCommaList(input: string): string[] {
@@ -44,36 +68,42 @@ export async function createServiceConversation(
     return;
   }
 
-  const title = await ask(conversation, ctx, "Service title:");
-  const price = await ask(conversation, ctx, "Price (numeric):");
+  const title = await askWithSchema(
+    conversation,
+    ctx,
+    "service-admin-create-title-prompt",
+    titleSchema,
+    "service-admin-error-title-min",
+  );
+  const price = await askWithSchema(
+    conversation,
+    ctx,
+    "service-admin-create-price-prompt",
+    moneySchema,
+    "service-admin-error-price-format",
+  );
   const descriptionInput = await ask(
     conversation,
     ctx,
-    "Description (optional, send - to skip):",
+    "service-admin-create-description-prompt",
   );
-  const notesInput = await ask(conversation, ctx, "Notes (comma separated):");
+  const notesInput = await ask(
+    conversation,
+    ctx,
+    "service-admin-create-notes-prompt",
+  );
   const fieldsInput = await ask(
     conversation,
     ctx,
-    "Needed fields (comma separated):",
+    "service-admin-create-fields-prompt",
   );
-  const durationInput = await ask(
+  const durationDays = await askWithSchema(
     conversation,
     ctx,
-    "Duration in days (1..255):",
+    "service-admin-create-duration-prompt",
+    durationSchema,
+    "service-admin-error-duration-range",
   );
-
-  const durationParsed = durationSchema.safeParse(durationInput);
-  if (!durationParsed.success) {
-    await ctx.reply("Invalid duration");
-    return;
-  }
-  const durationDays = durationParsed.data;
-
-  if (!moneySchema.safeParse(price).success) {
-    await ctx.reply("Invalid price format");
-    return;
-  }
 
   const notes = parseCommaList(notesInput);
   const neededFields = parseCommaList(fieldsInput);
@@ -93,7 +123,7 @@ export async function createServiceConversation(
   );
 
   if (!service) {
-    await ctx.reply("Failed to create service.");
+    await ctx.reply(ctx.t("service-admin-create-failed"));
     return;
   }
 
@@ -110,7 +140,11 @@ export async function createServiceConversation(
     }),
   );
 
-  await ctx.reply(`Service created: ${service.title}`);
+  await ctx.reply(
+    ctx.t("service-admin-created", {
+      title: service.title,
+    }),
+  );
 }
 
 export async function editServiceConversation(
@@ -124,38 +158,43 @@ export async function editServiceConversation(
 
   const services = await conversation.external(() => listAllServices());
   if (services.length === 0) {
-    await ctx.reply("No services to edit.");
+    await ctx.reply(ctx.t("service-admin-edit-empty"));
     return;
   }
 
   await ctx.reply(
     services
-      .map(
-        (service) =>
-          `${service.id} | ${service.title} | active=${service.isActive}`,
+      .map((service) =>
+        ctx.t("service-admin-service-row", {
+          id: service.id,
+          title: service.title,
+          isActive: service.isActive
+            ? ctx.t("common-active")
+            : ctx.t("common-inactive"),
+        }),
       )
       .join("\n"),
   );
 
-  const serviceId = await ask(conversation, ctx, "Send service id:");
-  const field = await ask(
+  const serviceId = await ask(
     conversation,
     ctx,
-    "Field to edit (title|price|description|notes|neededFields|durationDays):",
+    "service-admin-edit-id-prompt",
   );
-  const value = await ask(conversation, ctx, "New value:");
+  const field = await ask(conversation, ctx, "service-admin-edit-field-prompt");
+  const value = await ask(conversation, ctx, "service-admin-edit-value-prompt");
 
   const patch: Record<string, unknown> = {};
   if (field === "title") {
-    if (value.length < 2) {
-      await ctx.reply("Title must be at least 2 characters.");
+    if (!titleSchema.safeParse(value).success) {
+      await ctx.reply(ctx.t("service-admin-error-title-min"));
       return;
     }
     patch.title = value;
   }
   if (field === "price") {
     if (!moneySchema.safeParse(value).success) {
-      await ctx.reply("Invalid price format");
+      await ctx.reply(ctx.t("service-admin-error-price-format"));
       return;
     }
     patch.price = value;
@@ -172,25 +211,28 @@ export async function editServiceConversation(
   if (field === "durationDays") {
     const durationParsed = durationSchema.safeParse(value);
     if (!durationParsed.success) {
-      await ctx.reply("Duration must be an integer between 1 and 255.");
+      await ctx.reply(ctx.t("service-admin-error-duration-range"));
       return;
     }
     patch.durationDays = durationParsed.data;
   }
 
   if (Object.keys(patch).length === 0) {
-    await ctx.reply("Invalid field");
+    await ctx.reply(ctx.t("service-admin-error-field"));
     return;
   }
 
   await ctx.reply(
-    `About to update ${field} to "${value}". Type YES to confirm.`,
+    ctx.t("service-admin-edit-confirm-preview", {
+      field,
+      value,
+    }),
   );
   const confirmation = (
-    await ask(conversation, ctx, "Confirm update:")
+    await ask(conversation, ctx, "service-admin-edit-confirm-prompt")
   ).toLowerCase();
-  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
-    await ctx.reply("Cancelled.");
+  if (!isAffirmative(confirmation)) {
+    await ctx.reply(ctx.t("action-cancelled"));
     return;
   }
 
@@ -199,7 +241,7 @@ export async function editServiceConversation(
   );
 
   if (!updated) {
-    await ctx.reply("Service not found.");
+    await ctx.reply(ctx.t("service-admin-not-found"));
     return;
   }
 
@@ -214,7 +256,11 @@ export async function editServiceConversation(
     }),
   );
 
-  await ctx.reply(`Service updated: ${updated.title}`);
+  await ctx.reply(
+    ctx.t("service-admin-updated", {
+      title: updated.title,
+    }),
+  );
 }
 
 export async function deactivateServiceConversation(
@@ -228,15 +274,20 @@ export async function deactivateServiceConversation(
 
   const services = await conversation.external(() => listAllServices());
   if (services.length === 0) {
-    await ctx.reply("No services to deactivate.");
+    await ctx.reply(ctx.t("service-admin-deactivate-empty"));
     return;
   }
 
   await ctx.reply(
     services
-      .map(
-        (service) =>
-          `${service.id} | ${service.title} | active=${service.isActive}`,
+      .map((service) =>
+        ctx.t("service-admin-service-row", {
+          id: service.id,
+          title: service.title,
+          isActive: service.isActive
+            ? ctx.t("common-active")
+            : ctx.t("common-inactive"),
+        }),
       )
       .join("\n"),
   );
@@ -244,14 +295,14 @@ export async function deactivateServiceConversation(
   const serviceId = await ask(
     conversation,
     ctx,
-    "Send service id to deactivate:",
+    "service-admin-deactivate-id-prompt",
   );
   const confirmation = (
-    await ask(conversation, ctx, "Type YES to confirm: ")
+    await ask(conversation, ctx, "service-admin-deactivate-confirm-prompt")
   ).toLowerCase();
 
-  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
-    await ctx.reply("Cancelled.");
+  if (!isAffirmative(confirmation)) {
+    await ctx.reply(ctx.t("action-cancelled"));
     return;
   }
 
@@ -260,7 +311,7 @@ export async function deactivateServiceConversation(
   );
 
   if (!updated) {
-    await ctx.reply("Service not found.");
+    await ctx.reply(ctx.t("service-admin-not-found"));
     return;
   }
 
@@ -275,5 +326,9 @@ export async function deactivateServiceConversation(
     }),
   );
 
-  await ctx.reply(`Service deactivated: ${updated.title}`);
+  await ctx.reply(
+    ctx.t("service-admin-deactivated", {
+      title: updated.title,
+    }),
+  );
 }

@@ -12,9 +12,9 @@ const isoDateTimeSchema = z.string().datetime({ offset: true });
 async function ask(
   conversation: Conversation<BotContext, BotContext>,
   ctx: BotContext,
-  prompt: string,
+  promptKey: string,
 ): Promise<string> {
-  await ctx.reply(prompt);
+  await ctx.reply(ctx.t(promptKey));
   const update = await conversation.waitFor(":text");
   if (!update.message || !("text" in update.message)) {
     await update.reply(update.t("error-generic"));
@@ -33,67 +33,87 @@ export async function adminNotificationConversation(
     return;
   }
 
-  const audienceRaw = (
-    await ask(conversation, ctx, ctx.t("notification-admin-audience-prompt"))
-  ).toLowerCase();
-  const parsedAudience = audienceSchema.safeParse(audienceRaw);
-  if (!parsedAudience.success) {
+  let audience: z.infer<typeof audienceSchema>;
+  while (true) {
+    const audienceRaw = (
+      await ask(conversation, ctx, "notification-admin-audience-prompt")
+    ).toLowerCase();
+    const parsedAudience = audienceSchema.safeParse(audienceRaw);
+    if (parsedAudience.success) {
+      audience = parsedAudience.data;
+      break;
+    }
     await ctx.reply(ctx.t("notification-admin-invalid-audience"));
-    return;
   }
-  const audience = parsedAudience.data;
 
   let targetUserId: string | undefined;
   let targetServiceId: string | undefined;
 
   if (audience === "user") {
-    const telegramId = await ask(
-      conversation,
-      ctx,
-      ctx.t("notification-admin-target-user-prompt"),
-    );
-    const user = await conversation.external(() =>
-      getUserByTelegramId(telegramId),
-    );
-    if (!user) {
+    while (true) {
+      const telegramId = await ask(
+        conversation,
+        ctx,
+        "notification-admin-target-user-prompt",
+      );
+      const user = await conversation.external(() =>
+        getUserByTelegramId(telegramId),
+      );
+      if (user) {
+        targetUserId = user.id;
+        break;
+      }
+
       await ctx.reply(ctx.t("notification-admin-user-not-found"));
-      return;
     }
-    targetUserId = user.id;
   }
 
   if (audience === "service_subscribers") {
     const services = await conversation.external(() => listAllServices());
-    await ctx.reply(
-      services.map((service) => `${service.id} | ${service.title}`).join("\n"),
-    );
-    const serviceId = await ask(
+    const rows =
+      services.length === 0
+        ? ctx.t("notification-admin-service-list-empty")
+        : services
+            .map((service) =>
+              ctx.t("notification-admin-service-row", {
+                id: service.id,
+                title: service.title,
+              }),
+            )
+            .join("\n");
+    await ctx.reply(rows);
+
+    targetServiceId = await ask(
       conversation,
       ctx,
-      ctx.t("notification-admin-service-id-prompt"),
+      "notification-admin-service-id-prompt",
     );
-    targetServiceId = serviceId;
   }
 
-  const text = await ask(
-    conversation,
-    ctx,
-    ctx.t("notification-admin-text-prompt"),
-  );
-  const when = await ask(
-    conversation,
-    ctx,
-    ctx.t("notification-admin-send-at-prompt"),
-  );
-  const immediate = when.toUpperCase() === "NOW";
+  const text = await ask(conversation, ctx, "notification-admin-text-prompt");
+
+  let immediate = false;
   let sendAt = new Date();
-  if (!immediate) {
-    const parsedWhen = isoDateTimeSchema.safeParse(when);
-    if (!parsedWhen.success) {
-      await ctx.reply(ctx.t("notification-admin-invalid-datetime"));
-      return;
+  while (true) {
+    const when = await ask(
+      conversation,
+      ctx,
+      "notification-admin-send-at-prompt",
+    );
+    if (when.toUpperCase() === "NOW") {
+      immediate = true;
+      sendAt = new Date();
+      break;
     }
-    sendAt = new Date(parsedWhen.data);
+
+    const parsedWhen = isoDateTimeSchema.safeParse(when);
+    if (parsedWhen.success) {
+      sendAt = new Date(parsedWhen.data);
+      immediate = false;
+      break;
+    }
+
+    await ctx.reply(ctx.t("notification-admin-invalid-datetime"));
   }
 
   await conversation.external(() =>

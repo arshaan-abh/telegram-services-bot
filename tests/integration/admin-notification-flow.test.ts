@@ -56,19 +56,26 @@ describe("admin notification flow", () => {
     scheduleAdminNotificationMock.mockReset();
   });
 
-  it("rejects invalid datetime format", async () => {
+  it("re-prompts invalid datetime and schedules when corrected", async () => {
     const conversation = createConversation([
       "all",
       "Hello users",
       "2026-03-01 10:20:30",
+      "2026-03-01T10:20:30Z",
     ]);
     const ctx = createContext();
 
     await adminNotificationConversation(conversation as never, ctx as never);
 
-    expect(scheduleAdminNotificationMock).not.toHaveBeenCalled();
     expect(ctx.reply).toHaveBeenCalledWith(
       "notification-admin-invalid-datetime",
+    );
+    expect(scheduleAdminNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience: "all",
+        text: "Hello users",
+        immediate: false,
+      }),
     );
   });
 

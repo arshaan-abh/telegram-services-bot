@@ -358,7 +358,7 @@ describe("notifications service", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(
       "1111",
-      expect.stringContaining("Expiry: 2026-12-01 10:00"),
+      expect.stringContaining("2026-12-01 10:00"),
     );
 
     getNotificationByIdMock.mockResolvedValueOnce({
@@ -380,7 +380,7 @@ describe("notifications service", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(
       "2222",
-      expect.stringContaining("Reason: Payment proof mismatch"),
+      expect.stringContaining("Payment proof mismatch"),
     );
     expect(markNotificationSentMock).toHaveBeenCalledWith("n-dismissed", null);
   });
@@ -412,7 +412,7 @@ describe("notifications service", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(
       "9999",
-      "New order waiting review: order-42",
+      expect.stringContaining("order-42"),
       expect.objectContaining({
         reply_markup: {
           inline_keyboard: [
@@ -444,6 +444,39 @@ describe("notifications service", () => {
       "n-admin-order",
       null,
     );
+  });
+
+  it("marks malformed admin order queue payload as failed without sending", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-admin-order-malformed",
+      state: "pending",
+      audience: "user",
+      userId: "admin-user",
+      serviceId: null,
+      messageKey: "order_queued_admin",
+      messagePayload: {},
+      createdBy: "admin",
+    });
+    getUserByIdMock.mockResolvedValueOnce({
+      id: "admin-user",
+      telegramId: "9999",
+    });
+
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-admin-order-malformed");
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(markNotificationFailedMock).toHaveBeenCalledWith(
+      "n-admin-order-malformed",
+      expect.stringContaining("invalid_payload.order_queued_admin.orderId"),
+    );
+    expect(markNotificationSentMock).not.toHaveBeenCalled();
   });
 
   it("records retry metadata when dispatch fails", async () => {

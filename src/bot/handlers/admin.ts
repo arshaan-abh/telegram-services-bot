@@ -48,8 +48,11 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
       const mentionLink = `tg://user?id=${entry.userTelegramId}`;
       const discountCode = entry.order.discountCodeText ?? "-";
       const proofSummary = entry.order.proofFileId
-        ? `${entry.order.proofMime ?? "image"} | ${entry.order.proofSizeBytes ?? "-"} bytes`
-        : "-";
+        ? ctx.t("admin-proof-summary", {
+            mime: entry.order.proofMime ?? "image",
+            size: String(entry.order.proofSizeBytes ?? "-"),
+          })
+        : ctx.t("common-none");
 
       const text = ctx.t("admin-order-card", {
         orderId: entry.order.id,
@@ -62,12 +65,12 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
         unit: env.PRICE_UNIT,
         fields,
       });
-      const enrichedText =
-        `${text}\n` +
-        `Username: ${entry.username ?? "-"}\n` +
-        `Direct: ${mentionLink}\n` +
-        `Discount code: ${discountCode}\n` +
-        `Proof: ${proofSummary}`;
+      const enrichedText = `${text}\n${ctx.t("admin-order-extra", {
+        username: entry.username ?? "-",
+        link: mentionLink,
+        discountCode,
+        proof: proofSummary,
+      })}`;
 
       const keyboard = new InlineKeyboard()
         .text(
@@ -91,11 +94,11 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
       if (entry.order.proofFileId && ctx.chat?.id) {
         try {
           await ctx.api.sendPhoto(ctx.chat.id, entry.order.proofFileId, {
-            caption: `Proof for order ${entry.order.id}`,
+            caption: ctx.t("admin-proof-caption", { orderId: entry.order.id }),
           });
         } catch {
           await ctx.api.sendDocument(ctx.chat.id, entry.order.proofFileId, {
-            caption: `Proof for order ${entry.order.id}`,
+            caption: ctx.t("admin-proof-caption", { orderId: entry.order.id }),
           });
         }
       }

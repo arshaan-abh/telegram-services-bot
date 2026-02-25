@@ -16,46 +16,30 @@ const moneySchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 const usageLimitSchema = z.coerce.number().int().positive();
 
-function parseOptionalMoney(input: string): string | null {
-  if (input === "-") {
-    return null;
-  }
-  if (!moneySchema.safeParse(input).success) {
-    throw new Error("invalid_money");
-  }
-  return input;
-}
+const CONFIRM_YES = new Set(["yes", "y", "بله", "اره"]);
+const TRUE_SET = new Set(["yes", "y", "true", "1", "بله", "اره"]);
 
-function parseOptionalDate(input: string): Date | null {
-  if (input === "-") {
-    return null;
-  }
-
-  const parsed = isoDateTimeSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new Error("invalid_datetime");
-  }
-  return new Date(parsed.data);
-}
-
-function parseOptionalUsageLimit(input: string): number | null {
-  if (input === "-") {
-    return null;
-  }
-
-  const parsed = usageLimitSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new Error("invalid_usage_limit");
-  }
-  return parsed.data;
-}
+const EDITABLE_FIELDS = new Set([
+  "code",
+  "type",
+  "amount",
+  "minOrderAmount",
+  "maxDiscountAmount",
+  "startsAt",
+  "endsAt",
+  "totalUsageLimit",
+  "perUserUsageLimit",
+  "firstPurchaseOnly",
+  "isActive",
+  "serviceScope",
+]);
 
 async function ask(
   conversation: Conversation<BotContext, BotContext>,
   ctx: BotContext,
-  prompt: string,
+  promptKey: string,
 ): Promise<string> {
-  await ctx.reply(prompt);
+  await ctx.reply(ctx.t(promptKey));
   const update = await conversation.waitFor(":text");
   if (!update.message || !("text" in update.message)) {
     await update.reply(update.t("error-generic"));
@@ -63,6 +47,163 @@ async function ask(
   }
 
   return update.message.text.trim();
+}
+
+async function askWithSchema<T>(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+  schema: z.ZodType<T>,
+  errorKey: string,
+  normalize: (raw: string) => unknown = (raw) => raw,
+): Promise<T> {
+  while (true) {
+    const raw = await ask(conversation, ctx, promptKey);
+    const parsed = schema.safeParse(normalize(raw));
+    if (parsed.success) {
+      return parsed.data;
+    }
+
+    await ctx.reply(ctx.t(errorKey));
+  }
+}
+
+async function askOptionalMoney(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+): Promise<string | null> {
+  while (true) {
+    const raw = await ask(conversation, ctx, promptKey);
+    if (raw === "-") {
+      return null;
+    }
+
+    if (moneySchema.safeParse(raw).success) {
+      return raw;
+    }
+
+    await ctx.reply(ctx.t("discount-admin-error-money"));
+  }
+}
+
+async function askOptionalDate(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+): Promise<Date | null> {
+  while (true) {
+    const raw = await ask(conversation, ctx, promptKey);
+    if (raw === "-") {
+      return null;
+    }
+
+    const parsed = isoDateTimeSchema.safeParse(raw);
+    if (parsed.success) {
+      return new Date(parsed.data);
+    }
+
+    await ctx.reply(ctx.t("discount-admin-error-datetime"));
+  }
+}
+
+async function askOptionalUsageLimit(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+): Promise<number | null> {
+  while (true) {
+    const raw = await ask(conversation, ctx, promptKey);
+    if (raw === "-") {
+      return null;
+    }
+
+    const parsed = usageLimitSchema.safeParse(raw);
+    if (parsed.success) {
+      return parsed.data;
+    }
+
+    await ctx.reply(ctx.t("discount-admin-error-usage-limit"));
+  }
+}
+
+async function askDiscountCode(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+  promptKey: string,
+): Promise<string> {
+  while (true) {
+    const normalized = normalizeDiscountCode(
+      await ask(conversation, ctx, promptKey),
+    );
+    if (normalized.length > 0) {
+      return normalized;
+    }
+
+    await ctx.reply(ctx.t("discount-admin-error-code"));
+  }
+}
+
+function parseServiceScope(raw: string): string[] {
+  if (raw === "-") {
+    return [];
+  }
+
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function isAffirmative(raw: string): boolean {
+  return CONFIRM_YES.has(raw.toLowerCase());
+}
+
+function isTruthy(raw: string): boolean {
+  return TRUE_SET.has(raw.toLowerCase());
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("discount_codes_code_key") ||
+    message.toLowerCase().includes("duplicate key value")
+  );
+}
+
+function formatServiceList(
+  ctx: BotContext,
+  services: Array<{ id: string; title: string }>,
+): string {
+  if (services.length === 0) {
+    return ctx.t("discount-admin-service-row-empty");
+  }
+
+  return services
+    .map((service) =>
+      ctx.t("discount-admin-service-row", {
+        id: service.id,
+        title: service.title,
+      }),
+    )
+    .join("\n");
+}
+
+function formatDiscountList(
+  ctx: BotContext,
+  discounts: Array<{ id: string; code: string; isActive: boolean }>,
+): string {
+  return discounts
+    .map((discount) =>
+      ctx.t("discount-admin-discount-row", {
+        id: discount.id,
+        code: discount.code,
+        isActive: discount.isActive
+          ? ctx.t("common-active")
+          : ctx.t("common-inactive"),
+      }),
+    )
+    .join("\n");
 }
 
 export async function createDiscountConversation(
@@ -74,115 +215,96 @@ export async function createDiscountConversation(
     return;
   }
 
-  const code = normalizeDiscountCode(await ask(conversation, ctx, "Code:"));
-  const typeRaw = (
-    await ask(conversation, ctx, "Type (percent/fixed):")
-  ).toLowerCase();
-  const typeParsed = discountTypeSchema.safeParse(typeRaw);
-  if (!typeParsed.success) {
-    await ctx.reply("Invalid type.");
-    return;
-  }
-  const type = typeParsed.data;
+  const code = await askDiscountCode(
+    conversation,
+    ctx,
+    "discount-admin-create-code-prompt",
+  );
+  const type = await askWithSchema(
+    conversation,
+    ctx,
+    "discount-admin-create-type-prompt",
+    discountTypeSchema,
+    "discount-admin-error-type",
+    (raw) => raw.toLowerCase(),
+  );
+  const amount = await askWithSchema(
+    conversation,
+    ctx,
+    "discount-admin-create-amount-prompt",
+    moneySchema,
+    "discount-admin-error-money",
+  );
+  const minOrderAmountValue = await askOptionalMoney(
+    conversation,
+    ctx,
+    "discount-admin-create-min-order-prompt",
+  );
+  const maxDiscountAmountValue = await askOptionalMoney(
+    conversation,
+    ctx,
+    "discount-admin-create-max-discount-prompt",
+  );
+  const startsAtValue = await askOptionalDate(
+    conversation,
+    ctx,
+    "discount-admin-create-starts-at-prompt",
+  );
+  const endsAtValue = await askOptionalDate(
+    conversation,
+    ctx,
+    "discount-admin-create-ends-at-prompt",
+  );
+  const totalUsageValue = await askOptionalUsageLimit(
+    conversation,
+    ctx,
+    "discount-admin-create-total-usage-prompt",
+  );
+  const userUsageValue = await askOptionalUsageLimit(
+    conversation,
+    ctx,
+    "discount-admin-create-per-user-usage-prompt",
+  );
+  const firstPurchaseOnly = isAffirmative(
+    await ask(conversation, ctx, "discount-admin-create-first-purchase-prompt"),
+  );
 
-  const amount = await ask(conversation, ctx, "Amount:");
-  if (!moneySchema.safeParse(amount).success) {
-    await ctx.reply("Invalid amount.");
-    return;
-  }
-  const minOrderAmount = await ask(
-    conversation,
-    ctx,
-    "Min order amount (or -):",
+  const services = await conversation.external(() => listAllServices());
+  await ctx.reply(
+    ctx.t("discount-admin-service-scope-help", {
+      services: formatServiceList(ctx, services),
+    }),
   );
-  const maxDiscountAmount = await ask(
-    conversation,
-    ctx,
-    "Max discount amount (or -):",
+  const serviceIds = parseServiceScope(
+    await ask(conversation, ctx, "discount-admin-create-service-scope-prompt"),
   );
-  const startsAtRaw = await ask(
-    conversation,
-    ctx,
-    "Starts at ISO datetime (or -):",
-  );
-  const endsAtRaw = await ask(
-    conversation,
-    ctx,
-    "Ends at ISO datetime (or -):",
-  );
-  const totalUsage = await ask(conversation, ctx, "Total usage limit (or -):");
-  const userUsage = await ask(
-    conversation,
-    ctx,
-    "Per-user usage limit (or -):",
-  );
-  const firstPurchaseOnly = (
-    await ask(conversation, ctx, "First purchase only? (yes/no):")
-  ).toLowerCase();
 
-  let minOrderAmountValue: string | null;
-  let maxDiscountAmountValue: string | null;
-  let startsAtValue: Date | null;
-  let endsAtValue: Date | null;
-  let totalUsageValue: number | null;
-  let userUsageValue: number | null;
-
+  let discount: Awaited<ReturnType<typeof createDiscountCode>>;
   try {
-    minOrderAmountValue = parseOptionalMoney(minOrderAmount);
-    maxDiscountAmountValue = parseOptionalMoney(maxDiscountAmount);
-    startsAtValue = parseOptionalDate(startsAtRaw);
-    endsAtValue = parseOptionalDate(endsAtRaw);
-    totalUsageValue = parseOptionalUsageLimit(totalUsage);
-    userUsageValue = parseOptionalUsageLimit(userUsage);
+    discount = await conversation.external(() =>
+      createDiscountCode({
+        code,
+        type,
+        amount,
+        minOrderAmount: minOrderAmountValue,
+        maxDiscountAmount: maxDiscountAmountValue,
+        startsAt: startsAtValue,
+        endsAt: endsAtValue,
+        totalUsageLimit: totalUsageValue,
+        perUserUsageLimit: userUsageValue,
+        firstPurchaseOnly,
+        isActive: true,
+        createdBy: String(ctx.from?.id),
+        serviceIds,
+      }),
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "invalid_money") {
-      await ctx.reply("Invalid amount format.");
-      return;
-    }
-    if (message === "invalid_datetime") {
-      await ctx.reply(
-        "Invalid datetime. Use ISO datetime with timezone (example: 2026-03-01T10:20:30Z).",
-      );
-      return;
-    }
-    if (message === "invalid_usage_limit") {
-      await ctx.reply("Usage limit must be a positive integer.");
+    if (isUniqueConstraintError(error)) {
+      await ctx.reply(ctx.t("discount-admin-error-code-exists"));
       return;
     }
     throw error;
   }
-
-  const services = await conversation.external(() => listAllServices());
-  await ctx.reply(
-    `Services:\n${services.map((service) => `${service.id} | ${service.title}`).join("\n")}\nSend comma-separated service ids or - for all services.`,
-  );
-  const serviceIdsRaw = await ask(conversation, ctx, "Service scope:");
-  const serviceIds =
-    serviceIdsRaw === "-"
-      ? []
-      : serviceIdsRaw
-          .split(",")
-          .map((item) => item.trim())
-          .filter((item) => item.length > 0);
-
-  const discount = await conversation.external(() =>
-    createDiscountCode({
-      code,
-      type,
-      amount,
-      minOrderAmount: minOrderAmountValue,
-      maxDiscountAmount: maxDiscountAmountValue,
-      startsAt: startsAtValue,
-      endsAt: endsAtValue,
-      totalUsageLimit: totalUsageValue,
-      perUserUsageLimit: userUsageValue,
-      firstPurchaseOnly: ["yes", "y", "بله", "اره"].includes(firstPurchaseOnly),
-      isActive: true,
-      createdBy: String(ctx.from?.id),
-      serviceIds,
-    }),
-  );
 
   await conversation.external(() =>
     createAuditLog({
@@ -197,7 +319,11 @@ export async function createDiscountConversation(
     }),
   );
 
-  await ctx.reply(`Discount created: ${discount.code}`);
+  await ctx.reply(
+    ctx.t("discount-admin-created", {
+      code: discount.code,
+    }),
+  );
 }
 
 export async function editDiscountConversation(
@@ -211,121 +337,130 @@ export async function editDiscountConversation(
 
   const discounts = await conversation.external(() => listDiscountCodes());
   if (discounts.length === 0) {
-    await ctx.reply("No discount codes yet.");
+    await ctx.reply(ctx.t("discount-admin-empty"));
     return;
   }
 
-  await ctx.reply(
-    discounts
-      .map((d) => `${d.id} | ${d.code} | active=${d.isActive}`)
-      .join("\n"),
-  );
+  await ctx.reply(formatDiscountList(ctx, discounts));
 
-  const id = await ask(conversation, ctx, "Discount id:");
+  const id = await ask(conversation, ctx, "discount-admin-edit-id-prompt");
   const field = await ask(
     conversation,
     ctx,
-    "Field (code|type|amount|minOrderAmount|maxDiscountAmount|startsAt|endsAt|totalUsageLimit|perUserUsageLimit|firstPurchaseOnly|isActive|serviceScope):",
+    "discount-admin-edit-field-prompt",
   );
-  const value = await ask(conversation, ctx, "Value:");
+
+  if (!EDITABLE_FIELDS.has(field)) {
+    await ctx.reply(ctx.t("discount-admin-error-field"));
+    return;
+  }
 
   const patch: Record<string, unknown> = {};
   let serviceIds: string[] | undefined;
+
   if (field === "code") {
-    const normalized = normalizeDiscountCode(value);
-    if (normalized.length === 0) {
-      await ctx.reply("Invalid field");
-      return;
-    }
-    patch.code = normalized;
+    patch.code = await askDiscountCode(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "type") {
-    const normalizedType = value.toLowerCase();
-    if (!discountTypeSchema.safeParse(normalizedType).success) {
-      await ctx.reply("Invalid type.");
-      return;
-    }
-    patch.type = normalizedType;
+    patch.type = await askWithSchema(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+      discountTypeSchema,
+      "discount-admin-error-type",
+      (raw) => raw.toLowerCase(),
+    );
   }
+
   if (field === "amount") {
-    if (!moneySchema.safeParse(value).success) {
-      await ctx.reply("Invalid amount format.");
-      return;
-    }
-    patch.amount = value;
+    patch.amount = await askWithSchema(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+      moneySchema,
+      "discount-admin-error-money",
+    );
   }
+
   if (field === "minOrderAmount") {
-    try {
-      patch.minOrderAmount = parseOptionalMoney(value);
-    } catch {
-      await ctx.reply("Invalid amount format.");
-      return;
-    }
+    patch.minOrderAmount = await askOptionalMoney(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "maxDiscountAmount") {
-    try {
-      patch.maxDiscountAmount = parseOptionalMoney(value);
-    } catch {
-      await ctx.reply("Invalid amount format.");
-      return;
-    }
+    patch.maxDiscountAmount = await askOptionalMoney(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "startsAt") {
-    try {
-      patch.startsAt = parseOptionalDate(value);
-    } catch {
-      await ctx.reply(
-        "Invalid datetime. Use ISO datetime with timezone (example: 2026-03-01T10:20:30Z).",
-      );
-      return;
-    }
+    patch.startsAt = await askOptionalDate(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "endsAt") {
-    try {
-      patch.endsAt = parseOptionalDate(value);
-    } catch {
-      await ctx.reply(
-        "Invalid datetime. Use ISO datetime with timezone (example: 2026-03-01T10:20:30Z).",
-      );
-      return;
-    }
+    patch.endsAt = await askOptionalDate(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "totalUsageLimit") {
-    try {
-      patch.totalUsageLimit = parseOptionalUsageLimit(value);
-    } catch {
-      await ctx.reply("Usage limit must be a positive integer.");
-      return;
-    }
+    patch.totalUsageLimit = await askOptionalUsageLimit(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
+
   if (field === "perUserUsageLimit") {
-    try {
-      patch.perUserUsageLimit = parseOptionalUsageLimit(value);
-    } catch {
-      await ctx.reply("Usage limit must be a positive integer.");
-      return;
-    }
+    patch.perUserUsageLimit = await askOptionalUsageLimit(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
+    );
   }
-  if (field === "firstPurchaseOnly")
-    patch.firstPurchaseOnly = ["yes", "y", "بله", "اره"].includes(
-      value.toLowerCase(),
+
+  if (field === "firstPurchaseOnly") {
+    const raw = await ask(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
     );
-  if (field === "isActive")
-    patch.isActive = ["yes", "y", "true", "1", "بله", "اره"].includes(
-      value.toLowerCase(),
+    patch.firstPurchaseOnly = isAffirmative(raw);
+  }
+
+  if (field === "isActive") {
+    const raw = await ask(
+      conversation,
+      ctx,
+      "discount-admin-edit-value-prompt",
     );
+    patch.isActive = isTruthy(raw);
+  }
+
   if (field === "serviceScope") {
-    serviceIds =
-      value === "-"
-        ? []
-        : value
-            .split(",")
-            .map((item) => item.trim())
-            .filter((item) => item.length > 0);
+    serviceIds = parseServiceScope(
+      await ask(conversation, ctx, "discount-admin-edit-value-prompt"),
+    );
   }
 
   if (Object.keys(patch).length === 0 && serviceIds === undefined) {
-    await ctx.reply("Invalid field");
+    await ctx.reply(ctx.t("discount-admin-error-field"));
     return;
   }
 
@@ -335,19 +470,15 @@ export async function editDiscountConversation(
       updateDiscountCode(id, patch, String(ctx.from?.id), serviceIds),
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (
-      message.includes("discount_codes_code_key") ||
-      message.toLowerCase().includes("duplicate key value")
-    ) {
-      await ctx.reply("Discount code already exists.");
+    if (isUniqueConstraintError(error)) {
+      await ctx.reply(ctx.t("discount-admin-error-code-exists"));
       return;
     }
     throw error;
   }
 
   if (!updated) {
-    await ctx.reply("Discount not found.");
+    await ctx.reply(ctx.t("discount-admin-not-found"));
     return;
   }
 
@@ -362,7 +493,11 @@ export async function editDiscountConversation(
     }),
   );
 
-  await ctx.reply(`Discount updated: ${updated.code}`);
+  await ctx.reply(
+    ctx.t("discount-admin-updated", {
+      code: updated.code,
+    }),
+  );
 }
 
 export async function deactivateDiscountConversation(
@@ -376,22 +511,25 @@ export async function deactivateDiscountConversation(
 
   const discounts = await conversation.external(() => listDiscountCodes());
   if (discounts.length === 0) {
-    await ctx.reply("No discount codes yet.");
+    await ctx.reply(ctx.t("discount-admin-empty"));
     return;
   }
 
-  await ctx.reply(
-    discounts
-      .map((d) => `${d.id} | ${d.code} | active=${d.isActive}`)
-      .join("\n"),
+  await ctx.reply(formatDiscountList(ctx, discounts));
+
+  const id = await ask(
+    conversation,
+    ctx,
+    "discount-admin-deactivate-id-prompt",
+  );
+  const confirmation = await ask(
+    conversation,
+    ctx,
+    "discount-admin-deactivate-confirm-prompt",
   );
 
-  const id = await ask(conversation, ctx, "Discount id to deactivate:");
-  const confirmation = (
-    await ask(conversation, ctx, "Type YES to confirm:")
-  ).toLowerCase();
-  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
-    await ctx.reply("Cancelled.");
+  if (!isAffirmative(confirmation)) {
+    await ctx.reply(ctx.t("action-cancelled"));
     return;
   }
 
@@ -399,7 +537,7 @@ export async function deactivateDiscountConversation(
     updateDiscountCode(id, { isActive: false }, String(ctx.from?.id)),
   );
   if (!updated) {
-    await ctx.reply("Discount not found.");
+    await ctx.reply(ctx.t("discount-admin-not-found"));
     return;
   }
 
@@ -414,5 +552,9 @@ export async function deactivateDiscountConversation(
     }),
   );
 
-  await ctx.reply(`Discount deactivated: ${updated.code}`);
+  await ctx.reply(
+    ctx.t("discount-admin-deactivated", {
+      code: updated.code,
+    }),
+  );
 }

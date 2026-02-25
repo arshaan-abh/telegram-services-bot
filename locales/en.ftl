@@ -66,12 +66,23 @@ admin-action-done = Done
 admin-action-dismiss = Dismiss
 admin-action-contact = Contact
 admin-audit-empty = No audit logs yet.
+common-active = active
+common-inactive = inactive
+common-none = -
+action-cancelled = Cancelled.
 admin-contact-user-info =
   User info:
   Telegram ID: {$telegramId}
   Username: {$username}
   Name: {$name}
   Direct: {$link}
+admin-order-extra =
+  Username: {$username}
+  Direct: {$link}
+  Discount code: {$discountCode}
+  Proof: {$proof}
+admin-proof-summary = {$mime} | {$size} bytes
+admin-proof-caption = Proof for order {$orderId}
 admin-order-card =
   Order {$orderId}
   User: {$user}
@@ -90,6 +101,65 @@ confirm-yes-prompt = Type YES to confirm.
 dismiss-cancelled = Dismiss cancelled.
 admin-dismiss-confirmed = Order dismissed and user notified.
 admin-done-confirmed = Order approved and user notified.
+service-admin-create-title-prompt = Service title:
+service-admin-create-price-prompt = Price (numeric):
+service-admin-create-description-prompt = Description (optional, send - to skip):
+service-admin-create-notes-prompt = Notes (comma separated):
+service-admin-create-fields-prompt = Needed fields (comma separated):
+service-admin-create-duration-prompt = Duration in days (1..255):
+service-admin-create-failed = Failed to create service.
+service-admin-created = Service created: {$title}
+service-admin-edit-empty = No services to edit.
+service-admin-service-row = {$id} | {$title} | active={$isActive}
+service-admin-edit-id-prompt = Send service id:
+service-admin-edit-field-prompt = Field to edit (title|price|description|notes|neededFields|durationDays):
+service-admin-edit-value-prompt = New value:
+service-admin-edit-confirm-preview = About to update {$field} to "{$value}". Type YES to confirm.
+service-admin-edit-confirm-prompt = Confirm update:
+service-admin-updated = Service updated: {$title}
+service-admin-deactivate-empty = No services to deactivate.
+service-admin-deactivate-id-prompt = Send service id to deactivate:
+service-admin-deactivate-confirm-prompt = Type YES to confirm:
+service-admin-deactivated = Service deactivated: {$title}
+service-admin-not-found = Service not found.
+service-admin-error-title-min = Title must be at least 2 characters.
+service-admin-error-price-format = Invalid price format.
+service-admin-error-duration-range = Duration must be an integer between 1 and 255.
+service-admin-error-field = Invalid field.
+discount-admin-create-code-prompt = Code:
+discount-admin-create-type-prompt = Type (percent/fixed):
+discount-admin-create-amount-prompt = Amount:
+discount-admin-create-min-order-prompt = Min order amount (or -):
+discount-admin-create-max-discount-prompt = Max discount amount (or -):
+discount-admin-create-starts-at-prompt = Starts at ISO datetime (or -):
+discount-admin-create-ends-at-prompt = Ends at ISO datetime (or -):
+discount-admin-create-total-usage-prompt = Total usage limit (or -):
+discount-admin-create-per-user-usage-prompt = Per-user usage limit (or -):
+discount-admin-create-first-purchase-prompt = First purchase only? (yes/no):
+discount-admin-create-service-scope-prompt = Service scope (comma-separated IDs or -):
+discount-admin-service-scope-help =
+  Services:
+  {$services}
+discount-admin-service-row = {$id} | {$title}
+discount-admin-service-row-empty = (No services found)
+discount-admin-discount-row = {$id} | {$code} | active={$isActive}
+discount-admin-created = Discount created: {$code}
+discount-admin-empty = No discount codes yet.
+discount-admin-edit-id-prompt = Discount id:
+discount-admin-edit-field-prompt = Field (code|type|amount|minOrderAmount|maxDiscountAmount|startsAt|endsAt|totalUsageLimit|perUserUsageLimit|firstPurchaseOnly|isActive|serviceScope):
+discount-admin-edit-value-prompt = Value:
+discount-admin-updated = Discount updated: {$code}
+discount-admin-deactivate-id-prompt = Discount id to deactivate:
+discount-admin-deactivate-confirm-prompt = Type YES to confirm:
+discount-admin-deactivated = Discount deactivated: {$code}
+discount-admin-not-found = Discount not found.
+discount-admin-error-field = Invalid field.
+discount-admin-error-code = Discount code cannot be empty.
+discount-admin-error-type = Invalid type.
+discount-admin-error-money = Invalid amount format.
+discount-admin-error-datetime = Invalid datetime. Use ISO datetime with timezone (example: 2026-03-01T10:20:30Z).
+discount-admin-error-usage-limit = Usage limit must be a positive integer.
+discount-admin-error-code-exists = Discount code already exists.
 notification-created = Notification scheduled.
 notification-sent = Notification sent.
 notification-dismissed = Notification dismissed.
@@ -100,9 +170,18 @@ notification-admin-invalid-audience = Invalid audience.
 notification-admin-target-user-prompt = Target user telegram id:
 notification-admin-user-not-found = User not found.
 notification-admin-service-id-prompt = Service id:
+notification-admin-service-list-empty = No services found.
+notification-admin-service-row = {$id} | {$title}
 notification-admin-text-prompt = Notification text:
 notification-admin-send-at-prompt = Send at (ISO datetime with timezone, e.g. 2026-03-01T10:20:30Z) or NOW:
 notification-admin-invalid-datetime = Invalid datetime. Use ISO format with timezone or send NOW.
+notification-subscription-reminder = Reminder: your {$serviceTitle} subscription expires in 3 days.
+notification-subscription-ended = Your {$serviceTitle} subscription has ended.
+notification-order-queued-admin = New order waiting review: {$orderId}
+notification-order-approved-user = Your service is active now. Expiry: {$expiry}
+notification-order-dismissed-user = Your order was dismissed. Reason: {$reason}
+my-services-status-active = active
+my-services-status-expired = expired
 processing = Processing...
 error-generic = Something went wrong. Please try again.
 rate-limit = Too many requests. Please slow down.

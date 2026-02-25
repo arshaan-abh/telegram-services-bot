@@ -1,4 +1,5 @@
 import { qstash } from "../adapters/upstash.js";
+import { i18n } from "../bot/i18n.js";
 import { CALLBACKS } from "../config/constants.js";
 import { env } from "../config/env.js";
 import { createAuditLog } from "../db/repositories/audit.js";
@@ -21,33 +22,33 @@ function renderNotificationText(
   language: "en" | "fa",
 ): string {
   if (key === "subscription_reminder") {
-    return language === "fa"
-      ? `يادآوري: اشتراک ${String(payload.serviceTitle)} شما 3 روز ديگر تمام مي شود.`
-      : `Reminder: your ${String(payload.serviceTitle)} subscription expires in 3 days.`;
+    return i18n.t(language, "notification-subscription-reminder", {
+      serviceTitle: String(payload.serviceTitle),
+    });
   }
 
   if (key === "subscription_ended") {
-    return language === "fa"
-      ? `اشتراک ${String(payload.serviceTitle)} شما به پايان رسيد.`
-      : `Your ${String(payload.serviceTitle)} subscription has ended.`;
+    return i18n.t(language, "notification-subscription-ended", {
+      serviceTitle: String(payload.serviceTitle),
+    });
   }
 
   if (key === "order_queued_admin") {
-    return language === "fa"
-      ? `سفارش جديد در انتظار بررسي: ${String(payload.orderId)}`
-      : `New order waiting review: ${String(payload.orderId)}`;
+    return i18n.t(language, "notification-order-queued-admin", {
+      orderId: String(payload.orderId),
+    });
   }
 
   if (key === "order_approved_user") {
-    return language === "fa"
-      ? `سرويس شما فعال شد. تاريخ پايان: ${String(payload.expiry)}`
-      : `Your service is active now. Expiry: ${String(payload.expiry)}`;
+    return i18n.t(language, "notification-order-approved-user", {
+      expiry: String(payload.expiry),
+    });
   }
 
   if (key === "order_dismissed_user") {
-    return language === "fa"
-      ? `سفارش شما رد شد. دليل: ${String(payload.reason)}`
-      : `Your order was dismissed. Reason: ${String(payload.reason)}`;
+    return i18n.t(language, "notification-order-dismissed-user", {
+      reason: String(payload.reason),
+    });
   }
 
   return typeof payload.text === "string" ? payload.text : "";
@@ -80,10 +81,10 @@ function renderNotificationOptions(
     return undefined;
   }
 
-  const viewText = language === "fa" ? "مشاهده" : "View";
-  const doneText = language === "fa" ? "انجام شد" : "Done";
-  const dismissText = language === "fa" ? "رد" : "Dismiss";
-  const contactText = language === "fa" ? "ارتباط" : "Contact";
+  const viewText = i18n.t(language, "admin-action-view");
+  const doneText = i18n.t(language, "admin-action-done");
+  const dismissText = i18n.t(language, "admin-action-dismiss");
+  const contactText = i18n.t(language, "admin-action-contact");
 
   return {
     reply_markup: {
@@ -105,6 +106,53 @@ function renderNotificationOptions(
       ],
     },
   };
+}
+
+function requiredString(
+  payload: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = payload[key];
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getPayloadError(messageKey: string, payload: Record<string, unknown>) {
+  if (messageKey === "subscription_reminder") {
+    return requiredString(payload, "serviceTitle")
+      ? null
+      : "subscription_reminder.serviceTitle";
+  }
+
+  if (messageKey === "subscription_ended") {
+    return requiredString(payload, "serviceTitle")
+      ? null
+      : "subscription_ended.serviceTitle";
+  }
+
+  if (messageKey === "order_queued_admin") {
+    return requiredString(payload, "orderId")
+      ? null
+      : "order_queued_admin.orderId";
+  }
+
+  if (messageKey === "order_approved_user") {
+    return requiredString(payload, "expiry")
+      ? null
+      : "order_approved_user.expiry";
+  }
+
+  if (messageKey === "order_dismissed_user") {
+    return requiredString(payload, "reason")
+      ? null
+      : "order_dismissed_user.reason";
+  }
+
+  return null;
 }
 
 export type CreateNotificationInput = {
@@ -201,6 +249,18 @@ export async function dispatchNotificationById(
 
   const notification = await getNotificationById(notificationId);
   if (!notification || notification.state !== "pending") {
+    return;
+  }
+
+  const payloadError = getPayloadError(
+    notification.messageKey,
+    notification.messagePayload,
+  );
+  if (payloadError) {
+    await markNotificationFailed(
+      notification.id,
+      decorateFailureReason(`invalid_payload.${payloadError}`, metadata),
+    );
     return;
   }
 

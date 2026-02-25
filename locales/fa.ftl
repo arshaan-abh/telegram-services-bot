@@ -66,12 +66,23 @@ admin-action-done = انجام شد
 admin-action-dismiss = رد
 admin-action-contact = ارتباط
 admin-audit-empty = هنوز گزارشی ثبت نشده است.
+common-active = فعال
+common-inactive = غیرفعال
+common-none = -
+action-cancelled = لغو شد.
 admin-contact-user-info =
   اطلاعات کاربر:
   شناسه تلگرام: {$telegramId}
   نام کاربری: {$username}
   نام: {$name}
   لینک مستقیم: {$link}
+admin-order-extra =
+  نام کاربری: {$username}
+  لینک مستقیم: {$link}
+  کد تخفیف: {$discountCode}
+  رسید: {$proof}
+admin-proof-summary = {$mime} | {$size} بایت
+admin-proof-caption = رسید سفارش {$orderId}
 admin-order-card =
   سفارش {$orderId}
   کاربر: {$user}
@@ -90,6 +101,65 @@ confirm-yes-prompt = برای تایید YES بنویسید.
 dismiss-cancelled = رد سفارش لغو شد.
 admin-dismiss-confirmed = سفارش رد شد و کاربر مطلع شد.
 admin-done-confirmed = سفارش تایید شد و کاربر مطلع شد.
+service-admin-create-title-prompt = عنوان سرویس:
+service-admin-create-price-prompt = قیمت (عددی):
+service-admin-create-description-prompt = توضیحات (اختیاری، برای رد شدن - بفرستید):
+service-admin-create-notes-prompt = نکات (با کاما جدا کنید):
+service-admin-create-fields-prompt = فیلدهای موردنیاز (با کاما جدا کنید):
+service-admin-create-duration-prompt = مدت به روز (1..255):
+service-admin-create-failed = ساخت سرویس ناموفق بود.
+service-admin-created = سرویس ساخته شد: {$title}
+service-admin-edit-empty = سرویسی برای ویرایش وجود ندارد.
+service-admin-service-row = {$id} | {$title} | فعال={$isActive}
+service-admin-edit-id-prompt = شناسه سرویس را بفرستید:
+service-admin-edit-field-prompt = فیلد برای ویرایش (title|price|description|notes|neededFields|durationDays):
+service-admin-edit-value-prompt = مقدار جدید:
+service-admin-edit-confirm-preview = قرار است {$field} به "{$value}" تغییر کند. برای تایید YES بنویسید.
+service-admin-edit-confirm-prompt = تایید ویرایش:
+service-admin-updated = سرویس ویرایش شد: {$title}
+service-admin-deactivate-empty = سرویسی برای غیرفعال‌سازی وجود ندارد.
+service-admin-deactivate-id-prompt = شناسه سرویس برای غیرفعال‌سازی را بفرستید:
+service-admin-deactivate-confirm-prompt = برای تایید YES بنویسید:
+service-admin-deactivated = سرویس غیرفعال شد: {$title}
+service-admin-not-found = سرویس پیدا نشد.
+service-admin-error-title-min = عنوان باید حداقل 2 کاراکتر باشد.
+service-admin-error-price-format = فرمت قیمت نامعتبر است.
+service-admin-error-duration-range = مدت باید عدد صحیح بین 1 تا 255 باشد.
+service-admin-error-field = فیلد نامعتبر است.
+discount-admin-create-code-prompt = کد:
+discount-admin-create-type-prompt = نوع (percent/fixed):
+discount-admin-create-amount-prompt = مقدار:
+discount-admin-create-min-order-prompt = حداقل مبلغ سفارش (یا -):
+discount-admin-create-max-discount-prompt = سقف تخفیف (یا -):
+discount-admin-create-starts-at-prompt = زمان شروع ISO (یا -):
+discount-admin-create-ends-at-prompt = زمان پایان ISO (یا -):
+discount-admin-create-total-usage-prompt = سقف استفاده کلی (یا -):
+discount-admin-create-per-user-usage-prompt = سقف استفاده هر کاربر (یا -):
+discount-admin-create-first-purchase-prompt = فقط خرید اول؟ (yes/no):
+discount-admin-create-service-scope-prompt = دامنه سرویس (شناسه‌ها با کاما یا -):
+discount-admin-service-scope-help =
+  سرویس‌ها:
+  {$services}
+discount-admin-service-row = {$id} | {$title}
+discount-admin-service-row-empty = (سرویسی پیدا نشد)
+discount-admin-discount-row = {$id} | {$code} | فعال={$isActive}
+discount-admin-created = کد تخفیف ساخته شد: {$code}
+discount-admin-empty = هنوز کد تخفیفی وجود ندارد.
+discount-admin-edit-id-prompt = شناسه تخفیف:
+discount-admin-edit-field-prompt = فیلد (code|type|amount|minOrderAmount|maxDiscountAmount|startsAt|endsAt|totalUsageLimit|perUserUsageLimit|firstPurchaseOnly|isActive|serviceScope):
+discount-admin-edit-value-prompt = مقدار:
+discount-admin-updated = کد تخفیف ویرایش شد: {$code}
+discount-admin-deactivate-id-prompt = شناسه تخفیف برای غیرفعال‌سازی:
+discount-admin-deactivate-confirm-prompt = برای تایید YES بنویسید:
+discount-admin-deactivated = کد تخفیف غیرفعال شد: {$code}
+discount-admin-not-found = کد تخفیف پیدا نشد.
+discount-admin-error-field = فیلد نامعتبر است.
+discount-admin-error-code = کد تخفیف نمی‌تواند خالی باشد.
+discount-admin-error-type = نوع نامعتبر است.
+discount-admin-error-money = فرمت مبلغ نامعتبر است.
+discount-admin-error-datetime = زمان نامعتبر است. زمان ISO با منطقه زمانی بفرستید (مثل 2026-03-01T10:20:30Z).
+discount-admin-error-usage-limit = سقف استفاده باید عدد صحیح مثبت باشد.
+discount-admin-error-code-exists = این کد تخفیف قبلا ثبت شده است.
 notification-created = اعلان زمان بندی شد.
 notification-sent = اعلان ارسال شد.
 notification-dismissed = اعلان بسته شد.
@@ -100,9 +170,18 @@ notification-admin-invalid-audience = مخاطب نامعتبر است.
 notification-admin-target-user-prompt = شناسه تلگرام کاربر مقصد:
 notification-admin-user-not-found = کاربر پیدا نشد.
 notification-admin-service-id-prompt = شناسه سرویس:
+notification-admin-service-list-empty = سرویسی پیدا نشد.
+notification-admin-service-row = {$id} | {$title}
 notification-admin-text-prompt = متن اعلان:
 notification-admin-send-at-prompt = زمان ارسال (ISO با منطقه زمانی مثل 2026-03-01T10:20:30Z) یا NOW:
 notification-admin-invalid-datetime = زمان نامعتبر است. فرمت ISO با منطقه زمانی بفرستید یا NOW بنویسید.
+notification-subscription-reminder = یادآوری: اشتراک {$serviceTitle} شما 3 روز دیگر تمام می‌شود.
+notification-subscription-ended = اشتراک {$serviceTitle} شما به پایان رسید.
+notification-order-queued-admin = سفارش جدید در انتظار بررسی: {$orderId}
+notification-order-approved-user = سرویس شما فعال شد. تاریخ پایان: {$expiry}
+notification-order-dismissed-user = سفارش شما رد شد. دلیل: {$reason}
+my-services-status-active = فعال
+my-services-status-expired = منقضی
 processing = در حال پردازش...
 error-generic = خطایی رخ داد. دوباره تلاش کنید.
 rate-limit = درخواست زیاد است. کمی صبر کنید.

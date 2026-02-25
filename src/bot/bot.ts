@@ -20,6 +20,10 @@ import {
   parseReferralToken,
 } from "../services/referrals.js";
 import { calculateSubscriptionEnd, formatDateForUser } from "../utils/date.js";
+import {
+  buildUnknownCallbackResponse,
+  deriveOrderIdFromCallbackData,
+} from "./callbacks.js";
 import type { BotContext } from "./context.js";
 import { initialSession } from "./context.js";
 import { buyConversation } from "./conversations/buy.js";
@@ -52,24 +56,6 @@ initSentry();
 const globalBot = globalThis as typeof globalThis & {
   __telegramServicesBot?: Bot<BotContext>;
 };
-
-function parseCallbackData(data: string) {
-  const parts = data.split(":");
-  return parts;
-}
-
-function deriveOrderIdFromCallbackData(
-  data: string | undefined,
-): string | null {
-  if (!data) {
-    return null;
-  }
-
-  const match = data.match(
-    /^v1:admin:order:(?:view|done|dismiss|contact):([a-z0-9-]+)$/i,
-  );
-  return match?.[1] ?? null;
-}
 
 async function passAdminThrottle(ctx: BotContext): Promise<boolean> {
   const telegramId = ctx.from?.id;
@@ -415,16 +401,9 @@ function buildBot(): Bot<BotContext> {
   });
 
   bot.on("callback_query:data", async (ctx) => {
-    const [version] = parseCallbackData(ctx.callbackQuery.data);
-    if (version !== "v1") {
-      await ctx.answerCallbackQuery({
-        text: ctx.t("unknown-action"),
-        show_alert: true,
-      });
-      return;
-    }
-
-    await ctx.answerCallbackQuery({ text: ctx.t("unknown-action") });
+    await ctx.answerCallbackQuery(
+      buildUnknownCallbackResponse(ctx.callbackQuery.data, (key) => ctx.t(key)),
+    );
   });
 
   bot.on("message", async (ctx, next) => {

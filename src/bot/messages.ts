@@ -22,7 +22,7 @@ export function formatSubscriptionLine(input: {
   title: string;
   startedAt: Date;
   durationDays: number;
-  status: "active" | "expired";
+  statusLabel: string;
   locale: "en" | "fa";
 }) {
   const started = formatDateForUser(
@@ -30,7 +30,7 @@ export function formatSubscriptionLine(input: {
     env.APP_TIMEZONE,
     input.locale,
   );
-  return `- ${input.title} | ${input.status} | ${started} + ${input.durationDays}d`;
+  return `- ${input.title} | ${input.statusLabel} | ${started} + ${input.durationDays}d`;
 }
 
 export function markdownSafe(text: string): string {

@@ -110,7 +110,10 @@ export async function sendMyServices(ctx: BotContext): Promise<void> {
       title: entry.service.title,
       startedAt: entry.subscription.startedAt,
       durationDays: entry.subscription.durationDays,
-      status: entry.subscription.status,
+      statusLabel:
+        entry.subscription.status === "active"
+          ? ctx.t("my-services-status-active")
+          : ctx.t("my-services-status-expired"),
       locale,
     }),
   );
