@@ -22,6 +22,7 @@
 
 ## Production Readiness Checklist
 
+- [ ] `pnpm ops:readiness` passes in the target environment.
 - [ ] `pnpm typecheck`, `pnpm lint`, and `pnpm test` are green in CI.
 - [ ] `pnpm db:migrate` completed successfully in target environment.
 - [ ] Required Vercel environment variables are present.

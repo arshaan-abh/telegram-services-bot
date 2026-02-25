@@ -111,6 +111,215 @@ describe("notifications service", () => {
     expect(publishJSONMock).not.toHaveBeenCalled();
   });
 
+  it("publishes scheduled notifications to qstash when queue is enabled", async () => {
+    const sendAt = new Date("2026-03-01T10:20:30.000Z");
+    findNotificationByIdempotencyKeyMock.mockResolvedValueOnce(null);
+    createNotificationMock.mockResolvedValueOnce({
+      id: "scheduled-id",
+    });
+
+    const result = await createAndScheduleNotification({
+      audience: "service_subscribers",
+      serviceId: "service-1",
+      messageKey: "subscription_ended",
+      messagePayload: { serviceTitle: "Service A" },
+      sendAt,
+      createdBy: "admin",
+    });
+
+    expect(result.id).toBe("scheduled-id");
+    expect(publishJSONMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { notificationId: "scheduled-id" },
+        notBefore: sendAt.getTime(),
+      }),
+    );
+  });
+
+  it("returns without side effects for missing or non-pending notifications", async () => {
+    const sendMessage = vi.fn();
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    getNotificationByIdMock.mockResolvedValueOnce(null);
+    await dispatchNotificationById(botLike, "missing");
+
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "sent-id",
+      state: "sent",
+      audience: "all",
+      userId: null,
+      serviceId: null,
+      messageKey: "admin_custom",
+      messagePayload: { text: "already handled" },
+      createdBy: "admin",
+    });
+    await dispatchNotificationById(botLike, "sent-id");
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(markNotificationSentMock).not.toHaveBeenCalled();
+    expect(markNotificationFailedMock).not.toHaveBeenCalled();
+  });
+
+  it("marks user-targeted notification as failed when user id is missing", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-missing-user",
+      state: "pending",
+      audience: "user",
+      userId: null,
+      serviceId: null,
+      messageKey: "admin_custom",
+      messagePayload: { text: "hello" },
+      createdBy: "admin",
+    });
+
+    const botLike = {
+      api: {
+        sendMessage: vi.fn(),
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-missing-user", {
+      retryCount: 1,
+    });
+
+    expect(markNotificationFailedMock).toHaveBeenCalledWith(
+      "n-missing-user",
+      expect.stringContaining("missing_user_id"),
+    );
+  });
+
+  it("marks user-targeted notification as failed when user is not found", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-user-not-found",
+      state: "pending",
+      audience: "user",
+      userId: "u-missing",
+      serviceId: null,
+      messageKey: "admin_custom",
+      messagePayload: { text: "hello" },
+      createdBy: "admin",
+    });
+    getUserByIdMock.mockResolvedValueOnce(null);
+
+    const botLike = {
+      api: {
+        sendMessage: vi.fn(),
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-user-not-found");
+
+    expect(markNotificationFailedMock).toHaveBeenCalledWith(
+      "n-user-not-found",
+      "user_not_found",
+    );
+  });
+
+  it("dispatches to all users and records sent audit entry", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-all",
+      state: "pending",
+      audience: "all",
+      userId: null,
+      serviceId: null,
+      messageKey: "admin_custom",
+      messagePayload: { text: "broadcast" },
+      createdBy: "admin",
+    });
+    listAllUsersMock.mockResolvedValueOnce([
+      { id: "u1", telegramId: "111" },
+      { id: "u2", telegramId: "222" },
+    ]);
+
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-all", {
+      qstashMessageId: "msg-22",
+    });
+
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(markNotificationSentMock).toHaveBeenCalledWith("n-all", "msg-22");
+    expect(createAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "notification.send",
+        entityId: "n-all",
+      }),
+    );
+  });
+
+  it("marks service-subscriber notification as failed when service id is missing", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-service-missing",
+      state: "pending",
+      audience: "service_subscribers",
+      userId: null,
+      serviceId: null,
+      messageKey: "admin_custom",
+      messagePayload: { text: "targeted" },
+      createdBy: "admin",
+    });
+
+    const botLike = {
+      api: {
+        sendMessage: vi.fn(),
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-service-missing");
+
+    expect(markNotificationFailedMock).toHaveBeenCalledWith(
+      "n-service-missing",
+      "missing_service_id",
+    );
+  });
+
+  it("dispatches to service subscribers with existing user records only", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-subscribers",
+      state: "pending",
+      audience: "service_subscribers",
+      userId: null,
+      serviceId: "svc-1",
+      messageKey: "subscription_reminder",
+      messagePayload: { serviceTitle: "Service A" },
+      createdBy: "admin",
+    });
+    listSubscribersByServiceMock.mockResolvedValueOnce([
+      { userId: "u1" },
+      { userId: "u2" },
+    ]);
+    getUserByIdMock.mockResolvedValueOnce({ id: "u1", telegramId: "111" });
+    getUserByIdMock.mockResolvedValueOnce(null);
+
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-subscribers");
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith(
+      "111",
+      expect.stringContaining("expires in 3 days"),
+    );
+    expect(markNotificationSentMock).toHaveBeenCalledWith(
+      "n-subscribers",
+      null,
+    );
+  });
+
   it("records retry metadata when dispatch fails", async () => {
     getNotificationByIdMock.mockResolvedValueOnce({
       id: "n1",

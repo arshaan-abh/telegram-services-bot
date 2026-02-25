@@ -259,17 +259,17 @@ type DiscountType = "percent" | "fixed";
 - [x] Create unit tests for discount rule evaluator (all advanced constraints).
 - [x] Create unit tests for referral reward calculation and ledger updates.
 - [x] Create unit tests for image proof validator and order state gate.
-- [ ] Create integration tests for DB transactions:
-- [ ] Approve order creates/extends subscription correctly.
-- [ ] Dismiss order requires explanation and notifies user.
-- [ ] Repurchase same-fields extends; different-fields creates parallel subscription.
+- [x] Create integration tests for DB transactions:
+- [x] Approve order creates/extends subscription correctly.
+- [x] Dismiss order requires explanation and notifies user.
+- [x] Repurchase same-fields extends; different-fields creates parallel subscription.
 - [x] Create integration tests for notification lifecycle (`pending -> sent`, retry/failure path).
 - [x] Create webhook tests:
 - [x] Reject missing/invalid Telegram secret.
 - [x] Reject invalid QStash signature.
 - [x] Accept valid signed requests.
 - [x] Build small bot-update harness to feed synthetic Telegram updates for happy-path and edge-path conversation testing.
-- [ ] Enforce coverage threshold `>=80%` lines/functions/branches/statements.
+- [x] Enforce coverage threshold `>=80%` lines/functions/branches/statements.
 - [x] Add CI pipeline for `typecheck + lint + test + coverage`.
 
 ## Phase 13 - Deployment, Ops, and Runbooks

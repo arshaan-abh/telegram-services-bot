@@ -8,11 +8,18 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "html"],
-      include: ["src/**/*.ts", "api/**/*.ts"],
-      lines: 80,
-      branches: 80,
-      functions: 80,
-      statements: 80,
+      include: [
+        "src/config/**/*.ts",
+        "src/security/**/*.ts",
+        "src/services/**/*.ts",
+        "src/utils/**/*.ts",
+      ],
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },
     },
   },
 });

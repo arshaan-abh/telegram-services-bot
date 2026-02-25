@@ -105,6 +105,7 @@ pnpm test
 pnpm test:coverage
 pnpm typecheck
 pnpm lint
+pnpm ops:readiness
 ```
 
 ## Endpoints
