@@ -8,6 +8,11 @@ import {
 } from "../../db/repositories/audit.js";
 import { listPendingOrders } from "../../db/repositories/orders.js";
 import {
+  getUserByTelegramId,
+  upsertTelegramUser,
+} from "../../db/repositories/users.js";
+import {
+  createAndDispatchImmediateNotification,
   createAndScheduleNotification,
   dispatchNotificationById,
 } from "../../services/notifications.js";
@@ -65,10 +70,19 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
         `Proof: ${proofSummary}`;
 
       const keyboard = new InlineKeyboard()
-        .text("Done", CALLBACKS.adminOrderDone(entry.order.id))
-        .text("Dismiss", CALLBACKS.adminOrderDismiss(entry.order.id))
+        .text(
+          ctx.t("admin-action-done"),
+          CALLBACKS.adminOrderDone(entry.order.id),
+        )
+        .text(
+          ctx.t("admin-action-dismiss"),
+          CALLBACKS.adminOrderDismiss(entry.order.id),
+        )
         .row()
-        .text("Contact", CALLBACKS.adminOrderContact(entry.order.id));
+        .text(
+          ctx.t("admin-action-contact"),
+          CALLBACKS.adminOrderContact(entry.order.id),
+        );
 
       await ctx.reply(enrichedText, {
         reply_markup: keyboard,
@@ -93,20 +107,27 @@ export async function notifyAdminOrderQueued(
   ctx: BotContext,
   orderId: string,
 ): Promise<void> {
-  const keyboard = new InlineKeyboard()
-    .text("View", CALLBACKS.adminOrderView(orderId))
-    .text("Done", CALLBACKS.adminOrderDone(orderId))
-    .row()
-    .text("Dismiss", CALLBACKS.adminOrderDismiss(orderId))
-    .text("Contact", CALLBACKS.adminOrderContact(orderId));
+  let admin = await getUserByTelegramId(env.ADMIN_TELEGRAM_ID);
+  if (!admin) {
+    admin = await upsertTelegramUser({
+      telegramId: env.ADMIN_TELEGRAM_ID,
+      firstName: "Admin",
+      lastName: null,
+      username: null,
+    });
+  }
 
-  await ctx.api.sendMessage(
-    env.ADMIN_TELEGRAM_ID,
-    `New order waiting review: ${orderId}`,
-    {
-      reply_markup: keyboard,
+  await createAndDispatchImmediateNotification(ctx, {
+    audience: "user",
+    userId: admin.id,
+    messageKey: "order_queued_admin",
+    messagePayload: { orderId },
+    createdBy: String(ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+    metadata: {
+      retryCount: 0,
+      qstashMessageId: null,
     },
-  );
+  });
 }
 
 export async function sendAuditQuickView(ctx: BotContext): Promise<void> {
@@ -116,7 +137,7 @@ export async function sendAuditQuickView(ctx: BotContext): Promise<void> {
 
   const logs = await listRecentAuditLogs(10);
   if (logs.length === 0) {
-    await ctx.reply("No audit logs yet.");
+    await ctx.reply(ctx.t("admin-audit-empty"));
     return;
   }
 

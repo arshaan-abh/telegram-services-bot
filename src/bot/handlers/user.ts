@@ -79,7 +79,7 @@ export async function sendServiceDetails(
       }) + notes;
 
     const keyboard = new InlineKeyboard().text(
-      "Buy",
+      ctx.t("buy-button"),
       CALLBACKS.serviceBuy(service.id),
     );
 

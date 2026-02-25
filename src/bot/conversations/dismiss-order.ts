@@ -1,6 +1,8 @@
 import { Conversation } from "@grammyjs/conversations";
 
+import { env } from "../../config/env.js";
 import { getOrderWithUserAndService } from "../../db/repositories/orders.js";
+import { createAndDispatchImmediateNotification } from "../../services/notifications.js";
 import { dismissOrderByAdmin } from "../../services/orders.js";
 import type { BotContext } from "../context.js";
 
@@ -52,10 +54,19 @@ export async function dismissOrderConversation(
   );
 
   if (orderContext) {
-    await ctx.api.sendMessage(
-      orderContext.user.telegramId,
-      ctx.t("admin-order-dismissed-user", {
-        reason,
+    await conversation.external(() =>
+      createAndDispatchImmediateNotification(ctx, {
+        audience: "user",
+        userId: orderContext.user.id,
+        messageKey: "order_dismissed_user",
+        messagePayload: {
+          reason,
+        },
+        createdBy: String(ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+        metadata: {
+          retryCount: 0,
+          qstashMessageId: null,
+        },
       }),
     );
   }

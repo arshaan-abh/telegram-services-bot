@@ -1,4 +1,5 @@
 import { qstash } from "../adapters/upstash.js";
+import { CALLBACKS } from "../config/constants.js";
 import { env } from "../config/env.js";
 import { createAuditLog } from "../db/repositories/audit.js";
 import {
@@ -30,10 +31,82 @@ function renderNotificationText(
       : `Your ${String(payload.serviceTitle)} subscription has ended.`;
   }
 
+  if (key === "order_queued_admin") {
+    return language === "fa"
+      ? `سفارش جديد در انتظار بررسي: ${String(payload.orderId)}`
+      : `New order waiting review: ${String(payload.orderId)}`;
+  }
+
+  if (key === "order_approved_user") {
+    return language === "fa"
+      ? `سرويس شما فعال شد. تاريخ پايان: ${String(payload.expiry)}`
+      : `Your service is active now. Expiry: ${String(payload.expiry)}`;
+  }
+
+  if (key === "order_dismissed_user") {
+    return language === "fa"
+      ? `سفارش شما رد شد. دليل: ${String(payload.reason)}`
+      : `Your order was dismissed. Reason: ${String(payload.reason)}`;
+  }
+
   return typeof payload.text === "string" ? payload.text : "";
 }
 
-export async function createAndScheduleNotification(input: {
+type SendMessageOptions = {
+  reply_markup?: {
+    inline_keyboard: Array<
+      Array<{
+        text: string;
+        callback_data: string;
+      }>
+    >;
+  };
+};
+
+function renderNotificationOptions(
+  key: string,
+  payload: Record<string, unknown>,
+  language: "en" | "fa",
+): SendMessageOptions | undefined {
+  if (key !== "order_queued_admin") {
+    return undefined;
+  }
+
+  const orderIdRaw = payload.orderId;
+  const orderId =
+    typeof orderIdRaw === "string" && orderIdRaw.length > 0 ? orderIdRaw : null;
+  if (!orderId) {
+    return undefined;
+  }
+
+  const viewText = language === "fa" ? "مشاهده" : "View";
+  const doneText = language === "fa" ? "انجام شد" : "Done";
+  const dismissText = language === "fa" ? "رد" : "Dismiss";
+  const contactText = language === "fa" ? "ارتباط" : "Contact";
+
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: viewText, callback_data: CALLBACKS.adminOrderView(orderId) },
+          { text: doneText, callback_data: CALLBACKS.adminOrderDone(orderId) },
+        ],
+        [
+          {
+            text: dismissText,
+            callback_data: CALLBACKS.adminOrderDismiss(orderId),
+          },
+          {
+            text: contactText,
+            callback_data: CALLBACKS.adminOrderContact(orderId),
+          },
+        ],
+      ],
+    },
+  };
+}
+
+export type CreateNotificationInput = {
   audience: "user" | "all" | "service_subscribers";
   userId?: string;
   serviceId?: string;
@@ -42,7 +115,11 @@ export async function createAndScheduleNotification(input: {
   sendAt: Date;
   createdBy: string;
   skipQueue?: boolean;
-}): Promise<{ id: string }> {
+};
+
+export async function createAndScheduleNotification(
+  input: CreateNotificationInput,
+): Promise<{ id: string }> {
   const idempotencyKey = checksum({
     audience: input.audience,
     userId: input.userId ?? null,
@@ -86,7 +163,11 @@ export async function createAndScheduleNotification(input: {
 
 type BotLike = {
   api: {
-    sendMessage: (chatId: string | number, text: string) => Promise<unknown>;
+    sendMessage: (
+      chatId: string | number,
+      text: string,
+      options?: SendMessageOptions,
+    ) => Promise<unknown>;
   };
 };
 
@@ -126,6 +207,19 @@ export async function dispatchNotificationById(
     notification.messagePayload,
     language,
   );
+  const options = renderNotificationOptions(
+    notification.messageKey,
+    notification.messagePayload,
+    language,
+  );
+
+  const sendMessage = async (chatId: string | number): Promise<void> => {
+    if (options) {
+      await bot.api.sendMessage(chatId, text, options);
+      return;
+    }
+    await bot.api.sendMessage(chatId, text);
+  };
 
   try {
     if (notification.audience === "user") {
@@ -146,13 +240,13 @@ export async function dispatchNotificationById(
         return;
       }
 
-      await bot.api.sendMessage(user.telegramId, text);
+      await sendMessage(user.telegramId);
     }
 
     if (notification.audience === "all") {
       const users = await listAllUsers();
       for (const user of users) {
-        await bot.api.sendMessage(user.telegramId, text);
+        await sendMessage(user.telegramId);
       }
     }
 
@@ -171,7 +265,7 @@ export async function dispatchNotificationById(
       for (const subscriber of subscribers) {
         const user = await getUserById(subscriber.userId);
         if (user) {
-          await bot.api.sendMessage(user.telegramId, text);
+          await sendMessage(user.telegramId);
         }
       }
     }
@@ -211,4 +305,26 @@ export async function dispatchNotificationById(
 
 export async function dismissPendingNotification(id: string): Promise<void> {
   await cancelNotification(id);
+}
+
+export async function createAndDispatchImmediateNotification(
+  bot: BotLike,
+  input: Omit<CreateNotificationInput, "sendAt" | "skipQueue"> & {
+    sendAt?: Date;
+    metadata?: DispatchMetadata;
+  },
+): Promise<{ id: string }> {
+  const created = await createAndScheduleNotification({
+    audience: input.audience,
+    userId: input.userId,
+    serviceId: input.serviceId,
+    messageKey: input.messageKey,
+    messagePayload: input.messagePayload,
+    sendAt: input.sendAt ?? new Date(),
+    createdBy: input.createdBy,
+    skipQueue: true,
+  });
+
+  await dispatchNotificationById(bot, created.id, input.metadata);
+  return created;
 }

@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { dismissOrderByAdminMock, getOrderWithUserAndServiceMock } = vi.hoisted(
-  () => ({
-    dismissOrderByAdminMock: vi.fn(),
-    getOrderWithUserAndServiceMock: vi.fn(),
-  }),
-);
+const {
+  createAndDispatchImmediateNotificationMock,
+  dismissOrderByAdminMock,
+  getOrderWithUserAndServiceMock,
+} = vi.hoisted(() => ({
+  createAndDispatchImmediateNotificationMock: vi.fn(),
+  dismissOrderByAdminMock: vi.fn(),
+  getOrderWithUserAndServiceMock: vi.fn(),
+}));
 
 vi.mock("../../src/services/orders.js", () => ({
   dismissOrderByAdmin: dismissOrderByAdminMock,
@@ -13,6 +16,11 @@ vi.mock("../../src/services/orders.js", () => ({
 
 vi.mock("../../src/db/repositories/orders.js", () => ({
   getOrderWithUserAndService: getOrderWithUserAndServiceMock,
+}));
+
+vi.mock("../../src/services/notifications.js", () => ({
+  createAndDispatchImmediateNotification:
+    createAndDispatchImmediateNotificationMock,
 }));
 
 import { dismissOrderConversation } from "../../src/bot/conversations/dismiss-order.js";
@@ -52,6 +60,7 @@ function createContext() {
 
 describe("dismiss order flow", () => {
   beforeEach(() => {
+    createAndDispatchImmediateNotificationMock.mockReset();
     dismissOrderByAdminMock.mockReset();
     getOrderWithUserAndServiceMock.mockReset();
   });
@@ -74,6 +83,7 @@ describe("dismiss order flow", () => {
     dismissOrderByAdminMock.mockResolvedValueOnce({ id: "order-1" });
     getOrderWithUserAndServiceMock.mockResolvedValueOnce({
       user: {
+        id: "user-1",
         telegramId: "12345",
       },
     });
@@ -92,9 +102,14 @@ describe("dismiss order flow", () => {
       "999",
       "missing payment",
     );
-    expect(ctx.api.sendMessage).toHaveBeenCalledWith(
-      "12345",
-      "dismissed: missing payment",
+    expect(createAndDispatchImmediateNotificationMock).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({
+        audience: "user",
+        userId: "user-1",
+        messageKey: "order_dismissed_user",
+        messagePayload: { reason: "missing payment" },
+      }),
     );
     expect(ctx.reply).toHaveBeenCalledWith("admin-dismiss-confirmed");
   });

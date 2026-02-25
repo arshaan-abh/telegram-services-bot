@@ -57,44 +57,71 @@ export const mainMenu = new Menu<BotContext>("main-menu")
   );
 
 export const adminMenu = new Menu<BotContext>("admin-menu")
-  .text("Pending Orders", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await sendPendingOrders(ctx);
-  })
+  .text(
+    (ctx) => ctx.t("admin-menu-pending-orders"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await sendPendingOrders(ctx);
+    },
+  )
   .row()
-  .text("Create Service", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("createServiceConversation");
-  })
-  .text("Edit Service", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("editServiceConversation");
-  })
-  .text("Deactivate Service", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("deactivateServiceConversation");
-  })
+  .text(
+    (ctx) => ctx.t("admin-menu-create-service"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("createServiceConversation");
+    },
+  )
+  .text(
+    (ctx) => ctx.t("admin-menu-edit-service"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("editServiceConversation");
+    },
+  )
+  .text(
+    (ctx) => ctx.t("admin-menu-deactivate-service"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("deactivateServiceConversation");
+    },
+  )
   .row()
-  .text("Create Discount", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("createDiscountConversation");
-  })
-  .text("Edit Discount", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("editDiscountConversation");
-  })
-  .text("Deactivate Discount", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("deactivateDiscountConversation");
-  })
+  .text(
+    (ctx) => ctx.t("admin-menu-create-discount"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("createDiscountConversation");
+    },
+  )
+  .text(
+    (ctx) => ctx.t("admin-menu-edit-discount"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("editDiscountConversation");
+    },
+  )
+  .text(
+    (ctx) => ctx.t("admin-menu-deactivate-discount"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("deactivateDiscountConversation");
+    },
+  )
   .row()
-  .text("Notifications", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("adminNotificationConversation");
-  })
-  .text("Audit", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await sendAuditQuickView(ctx);
-  });
+  .text(
+    (ctx) => ctx.t("admin-menu-notifications"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await ctx.conversation.enter("adminNotificationConversation");
+    },
+  )
+  .text(
+    (ctx) => ctx.t("admin-menu-audit"),
+    async (ctx) => {
+      await ctx.answerCallbackQuery();
+      await sendAuditQuickView(ctx);
+    },
+  );
 
 mainMenu.register(adminMenu);

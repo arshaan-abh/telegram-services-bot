@@ -320,6 +320,121 @@ describe("notifications service", () => {
     );
   });
 
+  it("renders order approval and dismissal lifecycle texts for users", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-approved",
+      state: "pending",
+      audience: "user",
+      userId: "u-approved",
+      serviceId: null,
+      messageKey: "order_approved_user",
+      messagePayload: { expiry: "2026-12-01 10:00" },
+      createdBy: "admin",
+    });
+    getUserByIdMock.mockResolvedValueOnce({
+      id: "u-approved",
+      telegramId: "1111",
+    });
+
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-approved");
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      "1111",
+      expect.stringContaining("Expiry: 2026-12-01 10:00"),
+    );
+
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-dismissed",
+      state: "pending",
+      audience: "user",
+      userId: "u-dismissed",
+      serviceId: null,
+      messageKey: "order_dismissed_user",
+      messagePayload: { reason: "Payment proof mismatch" },
+      createdBy: "admin",
+    });
+    getUserByIdMock.mockResolvedValueOnce({
+      id: "u-dismissed",
+      telegramId: "2222",
+    });
+
+    await dispatchNotificationById(botLike, "n-dismissed");
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      "2222",
+      expect.stringContaining("Reason: Payment proof mismatch"),
+    );
+    expect(markNotificationSentMock).toHaveBeenCalledWith("n-dismissed", null);
+  });
+
+  it("sends admin order queue notification with inline action keyboard", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-admin-order",
+      state: "pending",
+      audience: "user",
+      userId: "admin-user",
+      serviceId: null,
+      messageKey: "order_queued_admin",
+      messagePayload: { orderId: "order-42" },
+      createdBy: "admin",
+    });
+    getUserByIdMock.mockResolvedValueOnce({
+      id: "admin-user",
+      telegramId: "9999",
+    });
+
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const botLike = {
+      api: {
+        sendMessage,
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-admin-order");
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      "9999",
+      "New order waiting review: order-42",
+      expect.objectContaining({
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "View",
+                callback_data: "v1:admin:order:view:order-42",
+              },
+              {
+                text: "Done",
+                callback_data: "v1:admin:order:done:order-42",
+              },
+            ],
+            [
+              {
+                text: "Dismiss",
+                callback_data: "v1:admin:order:dismiss:order-42",
+              },
+              {
+                text: "Contact",
+                callback_data: "v1:admin:order:contact:order-42",
+              },
+            ],
+          ],
+        },
+      }),
+    );
+    expect(markNotificationSentMock).toHaveBeenCalledWith(
+      "n-admin-order",
+      null,
+    );
+  });
+
   it("records retry metadata when dispatch fails", async () => {
     getNotificationByIdMock.mockResolvedValueOnce({
       id: "n1",

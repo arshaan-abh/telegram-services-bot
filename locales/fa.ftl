@@ -14,6 +14,7 @@ service-details =
   مدت: {$duration} روز
   {$description}
 service-notes-title = نکات:
+buy-button = خرید
 buy-start = فرایند خرید شروع شد.
 buy-enter-field = لطفا {$field} را وارد کنید:
 buy-confirm-values = مقادیر وارد شده:
@@ -49,8 +50,22 @@ referral-link = لینک دعوت شما:
 referral-balance = اعتبار فعلی شما: {$balance} {$unit}
 admin-denied = این بخش فقط برای ادمین است.
 admin-menu = پنل ادمین
+admin-menu-pending-orders = سفارش های در انتظار
+admin-menu-create-service = ساخت سرویس
+admin-menu-edit-service = ویرایش سرویس
+admin-menu-deactivate-service = غیرفعال کردن سرویس
+admin-menu-create-discount = ساخت تخفیف
+admin-menu-edit-discount = ویرایش تخفیف
+admin-menu-deactivate-discount = غیرفعال کردن تخفیف
+admin-menu-notifications = اعلان ها
+admin-menu-audit = گزارش عملیات
 admin-pending-title = سفارش های در انتظار:
 admin-pending-empty = سفارش در انتظار وجود ندارد.
+admin-action-view = مشاهده
+admin-action-done = انجام شد
+admin-action-dismiss = رد
+admin-action-contact = ارتباط
+admin-audit-empty = هنوز گزارشی ثبت نشده است.
 admin-order-card =
   سفارش {$orderId}
   کاربر: {$user}

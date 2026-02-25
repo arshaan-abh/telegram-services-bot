@@ -14,6 +14,7 @@ service-details =
   Duration: {$duration} days
   {$description}
 service-notes-title = Notes:
+buy-button = Buy
 buy-start = Starting purchase flow...
 buy-enter-field = Please enter {$field}:
 buy-confirm-values = Confirm your values:
@@ -49,8 +50,22 @@ referral-link = Invite link:
 referral-balance = Your credit balance: {$balance} {$unit}
 admin-denied = Admin only command.
 admin-menu = Admin Panel
+admin-menu-pending-orders = Pending Orders
+admin-menu-create-service = Create Service
+admin-menu-edit-service = Edit Service
+admin-menu-deactivate-service = Deactivate Service
+admin-menu-create-discount = Create Discount
+admin-menu-edit-discount = Edit Discount
+admin-menu-deactivate-discount = Deactivate Discount
+admin-menu-notifications = Notifications
+admin-menu-audit = Audit
 admin-pending-title = Pending orders:
 admin-pending-empty = No pending orders.
+admin-action-view = View
+admin-action-done = Done
+admin-action-dismiss = Dismiss
+admin-action-contact = Contact
+admin-audit-empty = No audit logs yet.
 admin-order-card =
   Order {$orderId}
   User: {$user}

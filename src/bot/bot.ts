@@ -9,6 +9,7 @@ import { childLogger } from "../observability/logger.js";
 import { initSentry, Sentry } from "../observability/sentry.js";
 import { reserveIdempotencyKey } from "../security/idempotency.js";
 import { checkRateLimit } from "../security/rate-limit.js";
+import { createAndDispatchImmediateNotification } from "../services/notifications.js";
 import { approveOrderByAdmin } from "../services/orders.js";
 import {
   linkReferralIfEligible,
@@ -290,10 +291,17 @@ function buildBot(): Bot<BotContext> {
       env.BOT_LANGUAGE,
     );
 
-    await ctx.api.sendMessage(
-      orderWithUser.user.telegramId,
-      ctx.t("admin-order-approved-user", { expiry }),
-    );
+    await createAndDispatchImmediateNotification(ctx, {
+      audience: "user",
+      userId: orderWithUser.user.id,
+      messageKey: "order_approved_user",
+      messagePayload: { expiry },
+      createdBy: String(ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+      metadata: {
+        retryCount: 0,
+        qstashMessageId: null,
+      },
+    });
 
     await ctx.reply(ctx.t("admin-done-confirmed"));
   });
