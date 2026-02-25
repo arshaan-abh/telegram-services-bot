@@ -132,6 +132,7 @@ export async function createDiscountCode(input: {
 export async function updateDiscountCode(
   id: string,
   patch: Partial<{
+    code: string;
     type: "percent" | "fixed";
     amount: string;
     minOrderAmount: string | null;

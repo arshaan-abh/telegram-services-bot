@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  cancelNotificationMock,
   publishJSONMock,
   createAuditLogMock,
   createNotificationMock,
@@ -11,7 +12,9 @@ const {
   getUserByIdMock,
   listAllUsersMock,
   listSubscribersByServiceMock,
+  reconcileExpiredSubscriptionsMock,
 } = vi.hoisted(() => ({
+  cancelNotificationMock: vi.fn(),
   publishJSONMock: vi.fn(),
   createAuditLogMock: vi.fn(),
   createNotificationMock: vi.fn(),
@@ -22,6 +25,7 @@ const {
   getUserByIdMock: vi.fn(),
   listAllUsersMock: vi.fn(),
   listSubscribersByServiceMock: vi.fn(),
+  reconcileExpiredSubscriptionsMock: vi.fn(),
 }));
 
 vi.mock("../../src/adapters/upstash.js", () => ({
@@ -35,7 +39,7 @@ vi.mock("../../src/db/repositories/audit.js", () => ({
 }));
 
 vi.mock("../../src/db/repositories/notifications.js", () => ({
-  cancelNotification: vi.fn(),
+  cancelNotification: cancelNotificationMock,
   createNotification: createNotificationMock,
   findNotificationByIdempotencyKey: findNotificationByIdempotencyKeyMock,
   getNotificationById: getNotificationByIdMock,
@@ -52,14 +56,20 @@ vi.mock("../../src/db/repositories/subscriptions.js", () => ({
   listSubscribersByService: listSubscribersByServiceMock,
 }));
 
+vi.mock("../../src/services/subscriptions.js", () => ({
+  reconcileExpiredSubscriptions: reconcileExpiredSubscriptionsMock,
+}));
+
 import {
   createAndScheduleNotification,
+  dismissPendingNotification,
   dispatchNotificationById,
 } from "../../src/services/notifications.js";
 
 describe("notifications service", () => {
   beforeEach(() => {
     publishJSONMock.mockReset();
+    cancelNotificationMock.mockReset();
     createAuditLogMock.mockReset();
     createNotificationMock.mockReset();
     findNotificationByIdempotencyKeyMock.mockReset();
@@ -69,6 +79,7 @@ describe("notifications service", () => {
     getUserByIdMock.mockReset();
     listAllUsersMock.mockReset();
     listSubscribersByServiceMock.mockReset();
+    reconcileExpiredSubscriptionsMock.mockReset();
   });
 
   it("reuses existing notification for same idempotency key", async () => {
@@ -476,5 +487,46 @@ describe("notifications service", () => {
         action: "notification.fail",
       }),
     );
+  });
+
+  it("runs subscription expiry reconciliation before notification dispatch", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce(null);
+
+    const botLike = {
+      api: {
+        sendMessage: vi.fn(),
+      },
+    };
+
+    await dispatchNotificationById(botLike, "n-reconcile");
+
+    expect(reconcileExpiredSubscriptionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dismisses notifications only when they are pending", async () => {
+    getNotificationByIdMock.mockResolvedValueOnce(null);
+    await expect(dismissPendingNotification("n-missing")).resolves.toBe(
+      "not_found",
+    );
+    expect(cancelNotificationMock).not.toHaveBeenCalled();
+
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-sent",
+      state: "sent",
+    });
+    await expect(dismissPendingNotification("n-sent")).resolves.toBe(
+      "not_pending",
+    );
+    expect(cancelNotificationMock).not.toHaveBeenCalled();
+
+    getNotificationByIdMock.mockResolvedValueOnce({
+      id: "n-pending",
+      state: "pending",
+    });
+    cancelNotificationMock.mockResolvedValueOnce(undefined);
+    await expect(dismissPendingNotification("n-pending")).resolves.toBe(
+      "dismissed",
+    );
+    expect(cancelNotificationMock).toHaveBeenCalledWith("n-pending");
   });
 });

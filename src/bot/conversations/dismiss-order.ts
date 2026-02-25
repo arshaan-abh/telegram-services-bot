@@ -37,12 +37,12 @@ export async function dismissOrderConversation(
   }
 
   await ctx.reply(
-    `${ctx.t("admin-dismiss-confirm")}\n\n${reason}\n\nType YES to confirm.`,
+    `${ctx.t("admin-dismiss-confirm")}\n\n${reason}\n\n${ctx.t("confirm-yes-prompt")}`,
   );
   const confirmation = (await waitForText(conversation)).toLowerCase();
 
   if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
-    await ctx.reply("Dismiss cancelled.");
+    await ctx.reply(ctx.t("dismiss-cancelled"));
     return;
   }
 

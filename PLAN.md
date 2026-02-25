@@ -288,32 +288,32 @@ type DiscountType = "percent" | "fixed";
 ## Phase 14 - Scope-Gap Closure Tasks
 
 - [ ] Route all bot notifications through the QStash-backed notification system (no direct lifecycle notification sends):
-- [ ] Replace direct `sendMessage` order lifecycle sends (order queued, approved, dismissed) with notification records + dispatch path.
-- [ ] Add dedicated notification message keys/payload contracts for order lifecycle events and keep localization support.
-- [ ] Ensure every notification entry transitions via `pending -> sent|failed|cancelled` and is auditable.
-- [ ] Add tests for order lifecycle notification state transitions and idempotency.
+- [x] Replace direct `sendMessage` order lifecycle sends (order queued, approved, dismissed) with notification records + dispatch path.
+- [x] Add dedicated notification message keys/payload contracts for order lifecycle events and keep localization support.
+- [x] Ensure every notification entry transitions via `pending -> sent|failed|cancelled` and is auditable.
+- [x] Add tests for order lifecycle notification state transitions and idempotency.
 - [ ] Complete i18n coverage for admin and user-facing UI/flow text:
 - [ ] Replace hardcoded English labels/prompts/buttons in menus, conversations, and handlers with `ctx.t(...)`.
-- [ ] Add missing keys in both `locales/en.ftl` and `locales/fa.ftl` for all newly localized texts.
+- [x] Add missing keys in both `locales/en.ftl` and `locales/fa.ftl` for all newly localized texts.
 - [ ] Keep callback/button wording fully localized while preserving callback payload stability.
 - [ ] Add/update tests to verify locale output for key admin/user flows.
 - [ ] Expand discount admin customization to full scope:
-- [ ] Support editing `code`, `type`, and `service scope` in addition to currently editable fields.
-- [ ] Add validation and conflict handling for code updates (normalization + uniqueness failures).
-- [ ] Support service-scope replacement/clearing in edit flow and persist through repository transaction.
-- [ ] Add tests for discount edit scenarios, especially service-scope updates and invalid transitions.
+- [x] Support editing `code`, `type`, and `service scope` in addition to currently editable fields.
+- [x] Add validation and conflict handling for code updates (normalization + uniqueness failures).
+- [x] Support service-scope replacement/clearing in edit flow and persist through repository transaction.
+- [x] Add tests for discount edit scenarios, especially service-scope updates and invalid transitions.
 - [ ] Implement explicit subscription expiry lifecycle management:
-- [ ] Add a deterministic expiry updater to mark subscriptions as `expired` when end date is reached.
-- [ ] Run expiry updates at reliable execution points (notification dispatch and/or scheduled reconciliation job).
-- [ ] Ensure `/my_services` reflects real-time active/expired status after reconciliation.
-- [ ] Add tests covering transition from active to expired and related user-visible outputs.
+- [x] Add a deterministic expiry updater to mark subscriptions as `expired` when end date is reached.
+- [x] Run expiry updates at reliable execution points (notification dispatch and/or scheduled reconciliation job).
+- [x] Ensure `/my_services` reflects real-time active/expired status after reconciliation.
+- [x] Add tests covering transition from active to expired and related user-visible outputs.
 - [ ] Align callback contract implementation with declared v1 callback set:
-- [ ] Implement handlers for declared callbacks (`buy:confirm`, `buy:edit`, `buy:cancel`, `discount:apply`, `notify:dismiss`) or remove unused contracts.
-- [ ] Add callback-level authorization, state checks, and idempotency for any newly activated callbacks.
+- [x] Implement handlers for declared callbacks (`buy:confirm`, `buy:edit`, `buy:cancel`, `discount:apply`, `notify:dismiss`) or remove unused contracts.
+- [x] Add callback-level authorization, state checks, and idempotency for any newly activated callbacks.
 - [ ] Add tests for valid/invalid callback payload handling and unknown callback fallbacks.
 - [ ] Add runtime input validation with Zod v4 for multi-step admin/user conversations:
-- [ ] Validate service/discount/notification conversation payloads via schemas instead of ad-hoc parsing only.
-- [ ] Add strict date-time validation for admin notification scheduling input and reject invalid dates safely.
+- [x] Validate service/discount/notification conversation payloads via schemas instead of ad-hoc parsing only.
+- [x] Add strict date-time validation for admin notification scheduling input and reject invalid dates safely.
 - [ ] Normalize and validate numeric inputs (price, limits, duration, percentage) with clear localized error responses.
 - [ ] Add tests for schema validation failures and recovery loops in conversations.
 - [ ] Complete production readiness and launch sign-off:

@@ -9,6 +9,7 @@ import {
 } from "../../db/repositories/services.js";
 import { listSubscriptionsByUser } from "../../db/repositories/subscriptions.js";
 import { getUserById } from "../../db/repositories/users.js";
+import { reconcileExpiredSubscriptions } from "../../services/subscriptions.js";
 import type { BotContext } from "../context.js";
 import { formatSubscriptionLine, withProcessingMessage } from "../messages.js";
 
@@ -94,6 +95,8 @@ export async function sendMyServices(ctx: BotContext): Promise<void> {
     await ctx.reply(ctx.t("error-generic"));
     return;
   }
+
+  await reconcileExpiredSubscriptions();
 
   const subscriptions = await listSubscriptionsByUser(ctx.dbUserId);
   if (subscriptions.length === 0) {

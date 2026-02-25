@@ -4,12 +4,16 @@ import { randomUUID } from "node:crypto";
 
 import { createRedisSessionStorage } from "../adapters/session-storage.js";
 import { env } from "../config/env.js";
+import { createAuditLog } from "../db/repositories/audit.js";
 import { getOrderWithUserAndService } from "../db/repositories/orders.js";
 import { childLogger } from "../observability/logger.js";
 import { initSentry, Sentry } from "../observability/sentry.js";
 import { reserveIdempotencyKey } from "../security/idempotency.js";
 import { checkRateLimit } from "../security/rate-limit.js";
-import { createAndDispatchImmediateNotification } from "../services/notifications.js";
+import {
+  createAndDispatchImmediateNotification,
+  dismissPendingNotification,
+} from "../services/notifications.js";
 import { approveOrderByAdmin } from "../services/orders.js";
 import {
   linkReferralIfEligible,
@@ -354,8 +358,56 @@ function buildBot(): Bot<BotContext> {
 
     const link = `tg://user?id=${order.user.telegramId}`;
     await ctx.reply(
-      `User info:\nTelegram ID: ${order.user.telegramId}\nUsername: ${order.user.username ?? "-"}\nName: ${order.user.firstName}\nDirect: ${link}`,
+      ctx.t("admin-contact-user-info", {
+        telegramId: order.user.telegramId,
+        username: order.user.username ?? "-",
+        name: order.user.firstName,
+        link,
+      }),
     );
+  });
+
+  bot.callbackQuery(/^v1:notify:dismiss:([a-z0-9-]+)$/i, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    if (!ensureAdmin(ctx)) {
+      return;
+    }
+    if (!(await passAdminThrottle(ctx))) {
+      return;
+    }
+
+    const notificationId = ctx.match[1];
+    if (!notificationId) {
+      await ctx.reply(ctx.t("unknown-action"));
+      return;
+    }
+
+    const adminActionKey = `admin:notify:dismiss:${notificationId}:${ctx.from?.id ?? "unknown"}`;
+    const actionReserved = await reserveIdempotencyKey(adminActionKey, 30);
+    if (!actionReserved) {
+      await ctx.reply(ctx.t("action-already-processed"));
+      return;
+    }
+
+    const result = await dismissPendingNotification(notificationId);
+    if (result === "dismissed") {
+      await createAuditLog({
+        actorTelegramId: String(ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+        actorUserId: ctx.dbUserId,
+        action: "notification.dismiss",
+        entityType: "notification",
+        entityId: notificationId,
+      });
+      await ctx.reply(ctx.t("notification-dismissed"));
+      return;
+    }
+
+    if (result === "not_pending") {
+      await ctx.reply(ctx.t("notification-dismiss-not-pending"));
+      return;
+    }
+
+    await ctx.reply(ctx.t("notification-dismiss-not-found"));
   });
 
   bot.callbackQuery("noop", async (ctx) => {

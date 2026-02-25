@@ -66,6 +66,12 @@ admin-action-done = Done
 admin-action-dismiss = Dismiss
 admin-action-contact = Contact
 admin-audit-empty = No audit logs yet.
+admin-contact-user-info =
+  User info:
+  Telegram ID: {$telegramId}
+  Username: {$username}
+  Name: {$name}
+  Direct: {$link}
 admin-order-card =
   Order {$orderId}
   User: {$user}
@@ -80,10 +86,23 @@ admin-order-approved-user = Your service is active now. Expiry: {$expiry}
 admin-order-dismissed-user = Your order was dismissed. Reason: {$reason}
 admin-dismiss-reason-ask = Send dismissal reason.
 admin-dismiss-confirm = Are you sure to dismiss this order with this reason?
+confirm-yes-prompt = Type YES to confirm.
+dismiss-cancelled = Dismiss cancelled.
 admin-dismiss-confirmed = Order dismissed and user notified.
 admin-done-confirmed = Order approved and user notified.
 notification-created = Notification scheduled.
 notification-sent = Notification sent.
+notification-dismissed = Notification dismissed.
+notification-dismiss-not-pending = Notification is already processed.
+notification-dismiss-not-found = Notification was not found.
+notification-admin-audience-prompt = Audience (user|all|service_subscribers):
+notification-admin-invalid-audience = Invalid audience.
+notification-admin-target-user-prompt = Target user telegram id:
+notification-admin-user-not-found = User not found.
+notification-admin-service-id-prompt = Service id:
+notification-admin-text-prompt = Notification text:
+notification-admin-send-at-prompt = Send at (ISO datetime with timezone, e.g. 2026-03-01T10:20:30Z) or NOW:
+notification-admin-invalid-datetime = Invalid datetime. Use ISO format with timezone or send NOW.
 processing = Processing...
 error-generic = Something went wrong. Please try again.
 rate-limit = Too many requests. Please slow down.

@@ -19,11 +19,6 @@ describe("constants", () => {
     expect(CALLBACKS.servicesList(2)).toBe("v1:svc:list:2");
     expect(CALLBACKS.serviceView("svc-1")).toBe("v1:svc:view:svc-1");
     expect(CALLBACKS.serviceBuy("svc-2")).toBe("v1:svc:buy:svc-2");
-    expect(CALLBACKS.buyConfirm("draft-1")).toBe("v1:buy:confirm:draft-1");
-    expect(CALLBACKS.buyEdit("draft-1", "email")).toBe(
-      "v1:buy:edit:draft-1:email",
-    );
-    expect(CALLBACKS.buyCancel("draft-1")).toBe("v1:buy:cancel:draft-1");
     expect(CALLBACKS.adminOrderView("order-1")).toBe(
       "v1:admin:order:view:order-1",
     );
@@ -35,9 +30,6 @@ describe("constants", () => {
     );
     expect(CALLBACKS.adminOrderContact("order-1")).toBe(
       "v1:admin:order:contact:order-1",
-    );
-    expect(CALLBACKS.discountApply("draft-1")).toBe(
-      "v1:discount:apply:draft-1",
     );
     expect(CALLBACKS.notifyDismiss("notif-1")).toBe(
       "v1:notify:dismiss:notif-1",

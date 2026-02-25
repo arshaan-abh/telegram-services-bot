@@ -3,15 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   createAuditLogMock,
   getNotificationByIdMock,
+  listActiveSubscriptionsMock,
   markNotificationFailedMock,
   markNotificationSentMock,
   getUserByIdMock,
+  updateSubscriptionDurationMock,
 } = vi.hoisted(() => ({
   createAuditLogMock: vi.fn(),
   getNotificationByIdMock: vi.fn(),
+  listActiveSubscriptionsMock: vi.fn(),
   markNotificationFailedMock: vi.fn(),
   markNotificationSentMock: vi.fn(),
   getUserByIdMock: vi.fn(),
+  updateSubscriptionDurationMock: vi.fn(),
 }));
 
 vi.mock("../../src/db/repositories/audit.js", () => ({
@@ -34,7 +38,9 @@ vi.mock("../../src/db/repositories/users.js", () => ({
 }));
 
 vi.mock("../../src/db/repositories/subscriptions.js", () => ({
+  listActiveSubscriptions: listActiveSubscriptionsMock,
   listSubscribersByService: vi.fn(),
+  updateSubscriptionDuration: updateSubscriptionDurationMock,
 }));
 
 import { dispatchNotificationById } from "../../src/services/notifications.js";
@@ -43,9 +49,13 @@ describe("notification lifecycle", () => {
   beforeEach(() => {
     createAuditLogMock.mockReset();
     getNotificationByIdMock.mockReset();
+    listActiveSubscriptionsMock.mockReset();
     markNotificationFailedMock.mockReset();
     markNotificationSentMock.mockReset();
     getUserByIdMock.mockReset();
+    updateSubscriptionDurationMock.mockReset();
+
+    listActiveSubscriptionsMock.mockResolvedValue([]);
   });
 
   it("transitions pending notification to sent", async () => {

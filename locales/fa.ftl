@@ -66,6 +66,12 @@ admin-action-done = انجام شد
 admin-action-dismiss = رد
 admin-action-contact = ارتباط
 admin-audit-empty = هنوز گزارشی ثبت نشده است.
+admin-contact-user-info =
+  اطلاعات کاربر:
+  شناسه تلگرام: {$telegramId}
+  نام کاربری: {$username}
+  نام: {$name}
+  لینک مستقیم: {$link}
 admin-order-card =
   سفارش {$orderId}
   کاربر: {$user}
@@ -80,10 +86,23 @@ admin-order-approved-user = سرویس شما فعال شد. تاریخ پایا
 admin-order-dismissed-user = سفارش شما رد شد. دلیل: {$reason}
 admin-dismiss-reason-ask = دلیل رد سفارش را بفرستید.
 admin-dismiss-confirm = آیا از رد سفارش مطمئن هستید؟
+confirm-yes-prompt = برای تایید YES بنویسید.
+dismiss-cancelled = رد سفارش لغو شد.
 admin-dismiss-confirmed = سفارش رد شد و کاربر مطلع شد.
 admin-done-confirmed = سفارش تایید شد و کاربر مطلع شد.
 notification-created = اعلان زمان بندی شد.
 notification-sent = اعلان ارسال شد.
+notification-dismissed = اعلان بسته شد.
+notification-dismiss-not-pending = اعلان قبلا پردازش شده است.
+notification-dismiss-not-found = اعلان پیدا نشد.
+notification-admin-audience-prompt = مخاطب (user|all|service_subscribers):
+notification-admin-invalid-audience = مخاطب نامعتبر است.
+notification-admin-target-user-prompt = شناسه تلگرام کاربر مقصد:
+notification-admin-user-not-found = کاربر پیدا نشد.
+notification-admin-service-id-prompt = شناسه سرویس:
+notification-admin-text-prompt = متن اعلان:
+notification-admin-send-at-prompt = زمان ارسال (ISO با منطقه زمانی مثل 2026-03-01T10:20:30Z) یا NOW:
+notification-admin-invalid-datetime = زمان نامعتبر است. فرمت ISO با منطقه زمانی بفرستید یا NOW بنویسید.
 processing = در حال پردازش...
 error-generic = خطایی رخ داد. دوباره تلاش کنید.
 rate-limit = درخواست زیاد است. کمی صبر کنید.

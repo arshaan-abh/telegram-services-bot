@@ -5,10 +5,6 @@ export const CALLBACKS = {
   serviceView: (serviceId: string) =>
     `${CALLBACK_VERSION}:svc:view:${serviceId}`,
   serviceBuy: (serviceId: string) => `${CALLBACK_VERSION}:svc:buy:${serviceId}`,
-  buyConfirm: (draftId: string) => `${CALLBACK_VERSION}:buy:confirm:${draftId}`,
-  buyEdit: (draftId: string, fieldKey: string) =>
-    `${CALLBACK_VERSION}:buy:edit:${draftId}:${fieldKey}`,
-  buyCancel: (draftId: string) => `${CALLBACK_VERSION}:buy:cancel:${draftId}`,
   adminOrderView: (orderId: string) =>
     `${CALLBACK_VERSION}:admin:order:view:${orderId}`,
   adminOrderDone: (orderId: string) =>
@@ -17,8 +13,6 @@ export const CALLBACKS = {
     `${CALLBACK_VERSION}:admin:order:dismiss:${orderId}`,
   adminOrderContact: (orderId: string) =>
     `${CALLBACK_VERSION}:admin:order:contact:${orderId}`,
-  discountApply: (draftId: string) =>
-    `${CALLBACK_VERSION}:discount:apply:${draftId}`,
   notifyDismiss: (notificationId: string) =>
     `${CALLBACK_VERSION}:notify:dismiss:${notificationId}`,
 } as const;

@@ -13,6 +13,7 @@ import {
 import { listSubscribersByService } from "../db/repositories/subscriptions.js";
 import { getUserById, listAllUsers } from "../db/repositories/users.js";
 import { checksum } from "../utils/hash.js";
+import { reconcileExpiredSubscriptions } from "./subscriptions.js";
 
 function renderNotificationText(
   key: string,
@@ -196,6 +197,8 @@ export async function dispatchNotificationById(
   notificationId: string,
   metadata?: DispatchMetadata,
 ): Promise<void> {
+  await reconcileExpiredSubscriptions();
+
   const notification = await getNotificationById(notificationId);
   if (!notification || notification.state !== "pending") {
     return;
@@ -303,8 +306,25 @@ export async function dispatchNotificationById(
   }
 }
 
-export async function dismissPendingNotification(id: string): Promise<void> {
+export type DismissNotificationResult =
+  | "dismissed"
+  | "not_found"
+  | "not_pending";
+
+export async function dismissPendingNotification(
+  id: string,
+): Promise<DismissNotificationResult> {
+  const notification = await getNotificationById(id);
+  if (!notification) {
+    return "not_found";
+  }
+
+  if (notification.state !== "pending") {
+    return "not_pending";
+  }
+
   await cancelNotification(id);
+  return "dismissed";
 }
 
 export async function createAndDispatchImmediateNotification(

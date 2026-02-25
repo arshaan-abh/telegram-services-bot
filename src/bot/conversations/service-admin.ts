@@ -1,4 +1,5 @@
 import { Conversation } from "@grammyjs/conversations";
+import { z } from "zod";
 
 import { createAuditLog } from "../../db/repositories/audit.js";
 import {
@@ -8,6 +9,9 @@ import {
   updateService,
 } from "../../db/repositories/services.js";
 import type { BotContext } from "../context.js";
+
+const moneySchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+const durationSchema = z.coerce.number().int().min(1).max(255);
 
 async function ask(
   conversation: Conversation<BotContext, BotContext>,
@@ -29,10 +33,6 @@ function parseCommaList(input: string): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
-}
-
-function isValidMoney(input: string): boolean {
-  return /^\d+(\.\d{1,2})?$/.test(input);
 }
 
 export async function createServiceConversation(
@@ -63,17 +63,14 @@ export async function createServiceConversation(
     "Duration in days (1..255):",
   );
 
-  const durationDays = Number(durationInput);
-  if (
-    !Number.isInteger(durationDays) ||
-    durationDays < 1 ||
-    durationDays > 255
-  ) {
+  const durationParsed = durationSchema.safeParse(durationInput);
+  if (!durationParsed.success) {
     await ctx.reply("Invalid duration");
     return;
   }
+  const durationDays = durationParsed.data;
 
-  if (!isValidMoney(price)) {
+  if (!moneySchema.safeParse(price).success) {
     await ctx.reply("Invalid price format");
     return;
   }
@@ -157,7 +154,7 @@ export async function editServiceConversation(
     patch.title = value;
   }
   if (field === "price") {
-    if (!isValidMoney(value)) {
+    if (!moneySchema.safeParse(value).success) {
       await ctx.reply("Invalid price format");
       return;
     }
@@ -173,12 +170,12 @@ export async function editServiceConversation(
     patch.neededFields = parseCommaList(value);
   }
   if (field === "durationDays") {
-    const duration = Number(value);
-    if (!Number.isInteger(duration) || duration < 1 || duration > 255) {
+    const durationParsed = durationSchema.safeParse(value);
+    if (!durationParsed.success) {
       await ctx.reply("Duration must be an integer between 1 and 255.");
       return;
     }
-    patch.durationDays = duration;
+    patch.durationDays = durationParsed.data;
   }
 
   if (Object.keys(patch).length === 0) {
