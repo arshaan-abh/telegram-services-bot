@@ -61,5 +61,6 @@ notification-created = اعلان زمان بندی شد.
 notification-sent = اعلان ارسال شد.
 error-generic = خطایی رخ داد. دوباره تلاش کنید.
 rate-limit = درخواست زیاد است. کمی صبر کنید.
+action-already-processed = این عملیات قبلا انجام شده است.
 unknown-command = دستور نامعتبر است.
 unknown-action = عملیات نامعتبر است.

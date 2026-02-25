@@ -61,5 +61,6 @@ notification-created = Notification scheduled.
 notification-sent = Notification sent.
 error-generic = Something went wrong. Please try again.
 rate-limit = Too many requests. Please slow down.
+action-already-processed = This action was already processed.
 unknown-command = Unknown command.
 unknown-action = Unknown action.

@@ -3,8 +3,9 @@ import { sql } from "drizzle-orm";
 
 import { redis } from "../src/adapters/upstash.js";
 import { db } from "../src/db/client.js";
+import { withApiErrorBoundary } from "../src/utils/api-handler.js";
 
-export default async function handler(
+async function handler(
   _req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
@@ -26,3 +27,5 @@ export default async function handler(
     });
   }
 }
+
+export default withApiErrorBoundary(handler);

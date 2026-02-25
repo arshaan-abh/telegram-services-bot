@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { qstash } from "../adapters/upstash.js";
 import { env } from "../config/env.js";
+import { createAuditLog } from "../db/repositories/audit.js";
 import {
   cancelNotification,
   createNotification,
@@ -130,8 +131,28 @@ export async function dispatchNotificationById(
     }
 
     await markNotificationSent(notification.id, null);
+    await createAuditLog({
+      actorTelegramId: notification.createdBy,
+      action: "notification.send",
+      entityType: "notification",
+      entityId: notification.id,
+      metadata: {
+        audience: notification.audience,
+        messageKey: notification.messageKey,
+      },
+    });
   } catch (error) {
-    await markNotificationFailed(notification.id, (error as Error).message);
+    const message = (error as Error).message;
+    await markNotificationFailed(notification.id, message);
+    await createAuditLog({
+      actorTelegramId: notification.createdBy,
+      action: "notification.fail",
+      entityType: "notification",
+      entityId: notification.id,
+      metadata: {
+        reason: message,
+      },
+    });
   }
 }
 

@@ -3,12 +3,10 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getBot } from "../../src/bot/bot.js";
 import { verifyQStashSignature } from "../../src/security/webhook.js";
 import { dispatchNotificationById } from "../../src/services/notifications.js";
+import { withApiErrorBoundary } from "../../src/utils/api-handler.js";
 import { readRawBody } from "../../src/utils/http.js";
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-): Promise<void> {
+async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).json({ ok: false, error: "method_not_allowed" });
     return;
@@ -43,3 +41,5 @@ export default async function handler(
 
   res.status(200).json({ ok: true });
 }
+
+export default withApiErrorBoundary(handler);

@@ -231,6 +231,15 @@ export async function buyConversation(
         continue;
       }
 
+      const proofKey = `proof:${ctx.from?.id ?? "unknown"}`;
+      const proofRate = await conversation.external(() =>
+        checkRateLimit("proof", proofKey),
+      );
+      if (!proofRate.success) {
+        await update.reply(ctx.t("rate-limit"));
+        continue;
+      }
+
       const proof = validateProofMedia(update.message);
       if (!proof.ok) {
         if (proof.reason === "too_large") {

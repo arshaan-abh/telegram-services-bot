@@ -6,6 +6,8 @@ import { env } from "../config/env.js";
 import { getOrderWithUserAndService } from "../db/repositories/orders.js";
 import { childLogger } from "../observability/logger.js";
 import { initSentry, Sentry } from "../observability/sentry.js";
+import { reserveIdempotencyKey } from "../security/idempotency.js";
+import { checkRateLimit } from "../security/rate-limit.js";
 import { approveOrderByAdmin } from "../services/orders.js";
 import {
   linkReferralIfEligible,
@@ -49,6 +51,21 @@ function parseCallbackData(data: string) {
   return parts;
 }
 
+async function passAdminThrottle(ctx: BotContext): Promise<boolean> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) {
+    return false;
+  }
+
+  const result = await checkRateLimit("admin", `admin:${telegramId}`);
+  if (!result.success) {
+    await ctx.reply(ctx.t("rate-limit"));
+    return false;
+  }
+
+  return true;
+}
+
 function buildBot(): Bot<BotContext> {
   const bot = new Bot<BotContext>(env.BOT_TOKEN);
 
@@ -68,6 +85,24 @@ function buildBot(): Bot<BotContext> {
   bot.use(i18n);
   bot.use(enrichUserContext);
   bot.use(globalRateLimit);
+
+  bot.use(async (ctx, next) => {
+    const callbackId = ctx.callbackQuery?.id;
+    if (!callbackId) {
+      await next();
+      return;
+    }
+
+    const reserved = await reserveIdempotencyKey(`cbq:${callbackId}`, 600);
+    if (!reserved) {
+      await ctx.answerCallbackQuery({
+        text: ctx.t("action-already-processed"),
+      });
+      return;
+    }
+
+    await next();
+  });
 
   bot.use(async (ctx, next) => {
     const logger = childLogger({
@@ -137,6 +172,9 @@ function buildBot(): Bot<BotContext> {
     if (!ensureAdmin(ctx)) {
       return;
     }
+    if (!(await passAdminThrottle(ctx))) {
+      return;
+    }
 
     await ctx.reply(ctx.t("admin-menu"), {
       reply_markup: adminMenu,
@@ -174,6 +212,9 @@ function buildBot(): Bot<BotContext> {
     if (!ensureAdmin(ctx)) {
       return;
     }
+    if (!(await passAdminThrottle(ctx))) {
+      return;
+    }
 
     await sendPendingOrders(ctx);
   });
@@ -183,12 +224,23 @@ function buildBot(): Bot<BotContext> {
     if (!ensureAdmin(ctx)) {
       return;
     }
+    if (!(await passAdminThrottle(ctx))) {
+      return;
+    }
 
     const orderId = ctx.match[1];
     if (!orderId) {
       await ctx.reply(ctx.t("unknown-action"));
       return;
     }
+
+    const adminActionKey = `admin:done:${orderId}:${ctx.from?.id ?? "unknown"}`;
+    const actionReserved = await reserveIdempotencyKey(adminActionKey, 30);
+    if (!actionReserved) {
+      await ctx.reply(ctx.t("action-already-processed"));
+      return;
+    }
+
     const approved = await approveOrderByAdmin(orderId, String(ctx.from?.id));
     const orderWithUser = await getOrderWithUserAndService(orderId);
     if (!orderWithUser) {
@@ -215,18 +267,32 @@ function buildBot(): Bot<BotContext> {
     if (!ensureAdmin(ctx)) {
       return;
     }
+    if (!(await passAdminThrottle(ctx))) {
+      return;
+    }
 
     const orderId = ctx.match[1];
     if (!orderId) {
       await ctx.reply(ctx.t("unknown-action"));
       return;
     }
+
+    const adminActionKey = `admin:dismiss:${orderId}:${ctx.from?.id ?? "unknown"}`;
+    const actionReserved = await reserveIdempotencyKey(adminActionKey, 30);
+    if (!actionReserved) {
+      await ctx.reply(ctx.t("action-already-processed"));
+      return;
+    }
+
     await ctx.conversation.enter("dismissOrderConversation", orderId);
   });
 
   bot.callbackQuery(/^v1:admin:order:contact:([a-z0-9-]+)$/i, async (ctx) => {
     await ctx.answerCallbackQuery();
     if (!ensureAdmin(ctx)) {
+      return;
+    }
+    if (!(await passAdminThrottle(ctx))) {
       return;
     }
 

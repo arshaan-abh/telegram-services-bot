@@ -181,11 +181,11 @@ type DiscountType = "percent" | "fixed";
 - [ ] Edit service fields with validation and confirmation.
 - [x] Remove/deactivate service with confirmation.
 - [ ] Implement pending order review card containing:
-- [ ] User identity: telegram id, username, deep link mention.
+- [x] User identity: telegram id, username, deep link mention.
 - [x] Service + pricing breakdown: base, discount, credit, payable.
 - [x] Needed-field values summary.
-- [ ] Discount code used info.
-- [ ] Proof media (if provided).
+- [x] Discount code used info.
+- [x] Proof media (if provided).
 - [x] Implement admin actions:
 - [x] `Done`: confirms fulfillment and activates subscription.
 - [x] `Dismiss`: collect mandatory explanation text then ask final confirmation.
@@ -235,18 +235,18 @@ type DiscountType = "percent" | "fixed";
 - [x] Reject non-POST and invalid content-type requests.
 - [ ] Implement Upstash rate limiting:
 - [x] Global per-user update throttle.
-- [ ] Strict proof-upload throttle.
+- [x] Strict proof-upload throttle.
 - [x] Strict discount-attempt throttle.
-- [ ] Admin action throttle.
-- [ ] Add anti-replay/idempotency for callback and admin action buttons.
+- [x] Admin action throttle.
+- [x] Add anti-replay/idempotency for callback and admin action buttons.
 - [x] Add authorization guards to ensure only admin can execute admin callbacks.
-- [ ] Add audit logging for create/edit/delete/approve/dismiss/discount-change/notification-send.
+- [x] Add audit logging for create/edit/delete/approve/dismiss/discount-change/notification-send.
 - [ ] Redact sensitive fields from logs and Sentry payloads.
 
 ## Phase 11 - Observability and Error Handling
 
 - [ ] Implement structured logs with `pino` including request id, update id, user id, order id.
-- [ ] Add centralized error boundary for bot and HTTP routes.
+- [x] Add centralized error boundary for bot and HTTP routes.
 - [ ] Integrate Sentry capture for unhandled exceptions and rejected promises.
 - [ ] Add domain error classes for validation, authorization, state conflict, external API failure.
 - [x] Ensure user-facing messages stay friendly and localized while internal logs retain diagnostics.

@@ -36,6 +36,11 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
   for (const entry of pending) {
     const fields = formatAdminOrderFields(entry.order.neededFieldValues);
     const userName = entry.username ?? entry.firstName;
+    const mentionLink = `tg://user?id=${entry.userTelegramId}`;
+    const discountCode = entry.order.discountCodeText ?? "-";
+    const proofSummary = entry.order.proofFileId
+      ? `${entry.order.proofMime ?? "image"} | ${entry.order.proofSizeBytes ?? "-"} bytes`
+      : "-";
 
     const text = ctx.t("admin-order-card", {
       orderId: entry.order.id,
@@ -48,6 +53,12 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
       unit: env.PRICE_UNIT,
       fields,
     });
+    const enrichedText =
+      `${text}\n` +
+      `Username: ${entry.username ?? "-"}\n` +
+      `Direct: ${mentionLink}\n` +
+      `Discount code: ${discountCode}\n` +
+      `Proof: ${proofSummary}`;
 
     const keyboard = new InlineKeyboard()
       .text("Done", CALLBACKS.adminOrderDone(entry.order.id))
@@ -55,9 +66,21 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
       .row()
       .text("Contact", CALLBACKS.adminOrderContact(entry.order.id));
 
-    await ctx.reply(text, {
+    await ctx.reply(enrichedText, {
       reply_markup: keyboard,
     });
+
+    if (entry.order.proofFileId && ctx.chat?.id) {
+      try {
+        await ctx.api.sendPhoto(ctx.chat.id, entry.order.proofFileId, {
+          caption: `Proof for order ${entry.order.id}`,
+        });
+      } catch {
+        await ctx.api.sendDocument(ctx.chat.id, entry.order.proofFileId, {
+          caption: `Proof for order ${entry.order.id}`,
+        });
+      }
+    }
   }
 }
 
