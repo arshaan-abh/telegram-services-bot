@@ -5,23 +5,5 @@
       "runtime": "nodejs22.x",
       "maxDuration": 30
     }
-  },
-  "routes": [
-    {
-      "src": "/api/telegram/webhook",
-      "dest": "/api/telegram/webhook.ts"
-    },
-    {
-      "src": "/api/qstash/dispatch",
-      "dest": "/api/qstash/dispatch.ts"
-    },
-    {
-      "src": "/api/health",
-      "dest": "/api/health.ts"
-    },
-    {
-      "src": "/api/internal/set-webhook",
-      "dest": "/api/internal/set-webhook.ts"
-    }
-  ]
+  }
 }
