@@ -1,17 +1,17 @@
-import { randomUUID } from "node:crypto";
-
 import { qstash } from "../adapters/upstash.js";
 import { env } from "../config/env.js";
 import { createAuditLog } from "../db/repositories/audit.js";
 import {
   cancelNotification,
   createNotification,
+  findNotificationByIdempotencyKey,
   getNotificationById,
   markNotificationFailed,
   markNotificationSent,
 } from "../db/repositories/notifications.js";
 import { listSubscribersByService } from "../db/repositories/subscriptions.js";
 import { getUserById, listAllUsers } from "../db/repositories/users.js";
+import { checksum } from "../utils/hash.js";
 
 function renderNotificationText(
   key: string,
@@ -41,8 +41,22 @@ export async function createAndScheduleNotification(input: {
   messagePayload: Record<string, unknown>;
   sendAt: Date;
   createdBy: string;
+  skipQueue?: boolean;
 }): Promise<{ id: string }> {
-  const idempotencyKey = randomUUID();
+  const idempotencyKey = checksum({
+    audience: input.audience,
+    userId: input.userId ?? null,
+    serviceId: input.serviceId ?? null,
+    messageKey: input.messageKey,
+    messagePayload: input.messagePayload,
+    sendAt: input.sendAt.toISOString(),
+  });
+
+  const existing = await findNotificationByIdempotencyKey(idempotencyKey);
+  if (existing) {
+    return { id: existing.id };
+  }
+
   const notification = await createNotification({
     audience: input.audience,
     userId: input.userId,
@@ -54,16 +68,18 @@ export async function createAndScheduleNotification(input: {
     createdBy: input.createdBy,
   });
 
-  await qstash.publishJSON({
-    url: `${env.APP_BASE_URL}/api/qstash/dispatch`,
-    body: {
-      notificationId: notification.id,
-    },
-    notBefore: input.sendAt.getTime(),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  if (!input.skipQueue) {
+    await qstash.publishJSON({
+      url: `${env.APP_BASE_URL}/api/qstash/dispatch`,
+      body: {
+        notificationId: notification.id,
+      },
+      notBefore: input.sendAt.getTime(),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
 
   return { id: notification.id };
 }
@@ -74,9 +90,30 @@ type BotLike = {
   };
 };
 
+type DispatchMetadata = {
+  retryCount?: number;
+  qstashMessageId?: string | null;
+};
+
+function decorateFailureReason(
+  reason: string,
+  metadata?: DispatchMetadata,
+): string {
+  const parts: string[] = [];
+  if (typeof metadata?.retryCount === "number") {
+    parts.push(`retry=${metadata.retryCount}`);
+  }
+  if (metadata?.qstashMessageId) {
+    parts.push(`qstash_message_id=${metadata.qstashMessageId}`);
+  }
+  parts.push(reason);
+  return parts.join("; ");
+}
+
 export async function dispatchNotificationById(
   bot: BotLike,
   notificationId: string,
+  metadata?: DispatchMetadata,
 ): Promise<void> {
   const notification = await getNotificationById(notificationId);
   if (!notification || notification.state !== "pending") {
@@ -93,13 +130,19 @@ export async function dispatchNotificationById(
   try {
     if (notification.audience === "user") {
       if (!notification.userId) {
-        await markNotificationFailed(notification.id, "missing_user_id");
+        await markNotificationFailed(
+          notification.id,
+          decorateFailureReason("missing_user_id", metadata),
+        );
         return;
       }
 
       const user = await getUserById(notification.userId);
       if (!user) {
-        await markNotificationFailed(notification.id, "user_not_found");
+        await markNotificationFailed(
+          notification.id,
+          decorateFailureReason("user_not_found", metadata),
+        );
         return;
       }
 
@@ -115,7 +158,10 @@ export async function dispatchNotificationById(
 
     if (notification.audience === "service_subscribers") {
       if (!notification.serviceId) {
-        await markNotificationFailed(notification.id, "missing_service_id");
+        await markNotificationFailed(
+          notification.id,
+          decorateFailureReason("missing_service_id", metadata),
+        );
         return;
       }
 
@@ -130,7 +176,10 @@ export async function dispatchNotificationById(
       }
     }
 
-    await markNotificationSent(notification.id, null);
+    await markNotificationSent(
+      notification.id,
+      metadata?.qstashMessageId ?? null,
+    );
     await createAuditLog({
       actorTelegramId: notification.createdBy,
       action: "notification.send",
@@ -139,10 +188,12 @@ export async function dispatchNotificationById(
       metadata: {
         audience: notification.audience,
         messageKey: notification.messageKey,
+        retryCount: metadata?.retryCount ?? 0,
+        qstashMessageId: metadata?.qstashMessageId ?? null,
       },
     });
   } catch (error) {
-    const message = (error as Error).message;
+    const message = decorateFailureReason((error as Error).message, metadata);
     await markNotificationFailed(notification.id, message);
     await createAuditLog({
       actorTelegramId: notification.createdBy,
@@ -151,6 +202,8 @@ export async function dispatchNotificationById(
       entityId: notification.id,
       metadata: {
         reason: message,
+        retryCount: metadata?.retryCount ?? 0,
+        qstashMessageId: metadata?.qstashMessageId ?? null,
       },
     });
   }

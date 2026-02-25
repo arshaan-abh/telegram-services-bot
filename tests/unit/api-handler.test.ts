@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ValidationError } from "../../src/services/errors.js";
 
-const { captureExceptionMock, loggerErrorMock } = vi.hoisted(() => ({
-  captureExceptionMock: vi.fn(),
-  loggerErrorMock: vi.fn(),
-}));
+const { captureExceptionMock, loggerErrorMock, loggerInfoMock } = vi.hoisted(
+  () => ({
+    captureExceptionMock: vi.fn(),
+    loggerErrorMock: vi.fn(),
+    loggerInfoMock: vi.fn(),
+  }),
+);
 
 vi.mock("../../src/observability/sentry.js", () => ({
   Sentry: {
@@ -14,6 +18,7 @@ vi.mock("../../src/observability/sentry.js", () => ({
 vi.mock("../../src/observability/logger.js", () => ({
   logger: {
     error: loggerErrorMock,
+    info: loggerInfoMock,
   },
 }));
 
@@ -60,6 +65,7 @@ describe("withApiErrorBoundary", () => {
   beforeEach(() => {
     captureExceptionMock.mockReset();
     loggerErrorMock.mockReset();
+    loggerInfoMock.mockReset();
   });
 
   it("passes through successful handlers", async () => {
@@ -79,6 +85,7 @@ describe("withApiErrorBoundary", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ ok: true });
     expect(captureExceptionMock).not.toHaveBeenCalled();
+    expect(loggerInfoMock).toHaveBeenCalledTimes(1);
   });
 
   it("captures and translates unhandled errors to 500 response", async () => {
@@ -108,5 +115,28 @@ describe("withApiErrorBoundary", () => {
     expect(res.headers["x-request-id"]).toEqual(expect.any(String));
     expect(captureExceptionMock).toHaveBeenCalledTimes(1);
     expect(loggerErrorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("translates domain errors to their status and code", async () => {
+    const wrapped = withApiErrorBoundary(() => {
+      throw new ValidationError("invalid request payload", "invalid_payload");
+    });
+
+    const req = {
+      method: "POST",
+      url: "/api/test",
+      headers: {},
+    } as TestRequest;
+    const res = createResponse();
+
+    await wrapped(req as never, res as never);
+
+    expect(res.statusCode).toBe(400);
+    const body = res.body as {
+      ok: boolean;
+      error: string;
+      requestId: string;
+    };
+    expect(body.error).toBe("invalid_payload");
   });
 });

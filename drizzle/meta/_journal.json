@@ -8,6 +8,13 @@
       "when": 1771975950987,
       "tag": "0000_good_reptil",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772080000000,
+      "tag": "0001_wise_frog_thor",
+      "breakpoints": true
     }
   ]
 }

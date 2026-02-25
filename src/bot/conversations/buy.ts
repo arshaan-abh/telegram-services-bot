@@ -1,5 +1,6 @@
 import { Conversation } from "@grammyjs/conversations";
 
+import { redis } from "../../adapters/upstash.js";
 import { env } from "../../config/env.js";
 import { getCreditBalance } from "../../db/repositories/credits.js";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../../db/repositories/profiles.js";
 import { hasApprovedOrder } from "../../db/repositories/referrals.js";
 import { getServiceById } from "../../db/repositories/services.js";
+import { reserveIdempotencyKey } from "../../security/idempotency.js";
 import { checkRateLimit } from "../../security/rate-limit.js";
 import {
   createDraftPurchaseOrder,
@@ -20,10 +22,13 @@ import {
 } from "../../services/orders.js";
 import {
   calculateOrderPricing,
+  discountReasonToMessageKey,
+  type DiscountRejectReason,
   evaluateDiscount,
 } from "../../services/pricing.js";
 import { validateProofMedia } from "../../services/proof-validation.js";
 import { dbMoneyToMinor, minorToDbMoney } from "../../utils/db-money.js";
+import { checksum } from "../../utils/hash.js";
 import { normalizeDiscountCode } from "../../utils/telegram.js";
 import type { BotContext } from "../context.js";
 import { notifyAdminOrderQueued } from "../handlers/admin.js";
@@ -45,6 +50,18 @@ async function waitForText(
 
   return update.message.text.trim();
 }
+
+type CachedDiscountDecision =
+  | {
+      ok: true;
+      discountMinor: string;
+      discountCodeId: string | null;
+      discountCodeText: string | null;
+    }
+  | {
+      ok: false;
+      reason: DiscountRejectReason;
+    };
 
 export async function buyConversation(
   conversation: Conversation<BotContext, BotContext>,
@@ -129,48 +146,115 @@ export async function buyConversation(
       await ctx.reply(ctx.t("rate-limit"));
     } else {
       const normalizedCode = normalizeDiscountCode(discountInput);
-      const discount = await conversation.external(() =>
-        getDiscountByCode(normalizedCode),
-      );
-      const scopeIds = discount
-        ? await conversation.external(() =>
-            getDiscountServiceScope(discount.id),
-          )
-        : [];
-      const usage = discount
-        ? await conversation.external(() =>
-            getDiscountUsageCounts(discount.id, ctx.dbUserId!),
-          )
-        : { total: 0, user: 0 };
-      const userHasApprovedOrders = await conversation.external(() =>
-        hasApprovedOrder(ctx.dbUserId!),
-      );
-
-      const discountEval = evaluateDiscount({
-        discount,
-        serviceScopedIds: scopeIds,
+      const discountAttemptChecksum = checksum({
+        userId: ctx.dbUserId,
         serviceId: service.id,
-        orderBaseMinor: dbMoneyToMinor(service.price),
-        now: new Date(),
-        usageCountTotal: usage.total,
-        usageCountForUser: usage.user,
-        userHasApprovedOrders,
+        normalizedCode,
+        neededValues,
+        basePrice: service.price,
       });
+      const lockKey = `discount:apply:lock:${discountAttemptChecksum}`;
+      const resultKey = `discount:apply:result:${discountAttemptChecksum}`;
 
-      if (discountEval.ok) {
-        discountMinor = discountEval.discountMinor;
-        discountCodeId = discount?.id ?? null;
-        discountCodeText = discount?.code ?? null;
-        await ctx.reply(
-          ctx.t("buy-discount-applied", {
-            amount: minorToDbMoney(discountEval.discountMinor),
-            unit: env.PRICE_UNIT,
-          }),
+      let cachedDecision: CachedDiscountDecision | null = null;
+      const reserved = await conversation.external(() =>
+        reserveIdempotencyKey(lockKey, 1800),
+      );
+      if (!reserved) {
+        const cachedRaw = await conversation.external(() =>
+          redis.get<string>(resultKey),
         );
+        if (cachedRaw) {
+          cachedDecision = JSON.parse(cachedRaw) as CachedDiscountDecision;
+        }
+      }
+
+      if (cachedDecision) {
+        if (cachedDecision.ok) {
+          discountMinor = BigInt(cachedDecision.discountMinor);
+          discountCodeId = cachedDecision.discountCodeId;
+          discountCodeText = cachedDecision.discountCodeText;
+          await ctx.reply(
+            ctx.t("buy-discount-applied", {
+              amount: minorToDbMoney(discountMinor),
+              unit: env.PRICE_UNIT,
+            }),
+          );
+        } else {
+          await ctx.reply(
+            ctx.t("buy-discount-invalid", {
+              reason: ctx.t(discountReasonToMessageKey(cachedDecision.reason)),
+            }),
+          );
+        }
       } else {
-        await ctx.reply(
-          ctx.t("buy-discount-invalid", { reason: discountEval.reason }),
+        const discount = await conversation.external(() =>
+          getDiscountByCode(normalizedCode),
         );
+        const scopeIds = discount
+          ? await conversation.external(() =>
+              getDiscountServiceScope(discount.id),
+            )
+          : [];
+        const usage = discount
+          ? await conversation.external(() =>
+              getDiscountUsageCounts(discount.id, ctx.dbUserId!),
+            )
+          : { total: 0, user: 0 };
+        const userHasApprovedOrders = await conversation.external(() =>
+          hasApprovedOrder(ctx.dbUserId!),
+        );
+
+        const discountEval = evaluateDiscount({
+          discount,
+          serviceScopedIds: scopeIds,
+          serviceId: service.id,
+          orderBaseMinor: dbMoneyToMinor(service.price),
+          now: new Date(),
+          usageCountTotal: usage.total,
+          usageCountForUser: usage.user,
+          userHasApprovedOrders,
+        });
+
+        if (discountEval.ok) {
+          discountMinor = discountEval.discountMinor;
+          discountCodeId = discount?.id ?? null;
+          discountCodeText = discount?.code ?? null;
+          await conversation.external(() =>
+            redis.set(
+              resultKey,
+              JSON.stringify({
+                ok: true,
+                discountMinor: discountEval.discountMinor.toString(),
+                discountCodeId,
+                discountCodeText,
+              } as CachedDiscountDecision),
+              { ex: 1800 },
+            ),
+          );
+          await ctx.reply(
+            ctx.t("buy-discount-applied", {
+              amount: minorToDbMoney(discountEval.discountMinor),
+              unit: env.PRICE_UNIT,
+            }),
+          );
+        } else {
+          await conversation.external(() =>
+            redis.set(
+              resultKey,
+              JSON.stringify({
+                ok: false,
+                reason: discountEval.reason,
+              } as CachedDiscountDecision),
+              { ex: 1800 },
+            ),
+          );
+          await ctx.reply(
+            ctx.t("buy-discount-invalid", {
+              reason: ctx.t(discountReasonToMessageKey(discountEval.reason)),
+            }),
+          );
+        }
       }
     }
   }

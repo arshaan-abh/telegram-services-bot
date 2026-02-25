@@ -37,7 +37,19 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
     return;
   }
 
-  await dispatchNotificationById(getBot(), body.notificationId);
+  const retryHeader = req.headers["upstash-retries"];
+  const retryRaw = Array.isArray(retryHeader) ? retryHeader[0] : retryHeader;
+  const retryCount = retryRaw ? Number(retryRaw) : undefined;
+
+  const messageIdHeader = req.headers["upstash-message-id"];
+  const messageId = Array.isArray(messageIdHeader)
+    ? (messageIdHeader[0] ?? null)
+    : (messageIdHeader ?? null);
+
+  await dispatchNotificationById(getBot(), body.notificationId, {
+    retryCount: Number.isFinite(retryCount) ? retryCount : undefined,
+    qstashMessageId: messageId,
+  });
 
   res.status(200).json({ ok: true });
 }

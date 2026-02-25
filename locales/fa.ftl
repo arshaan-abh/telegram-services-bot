@@ -13,6 +13,7 @@ service-details =
   قیمت: {$price} {$unit}
   مدت: {$duration} روز
   {$description}
+service-notes-title = نکات:
 buy-start = فرایند خرید شروع شد.
 buy-enter-field = لطفا {$field} را وارد کنید:
 buy-confirm-values = مقادیر وارد شده:
@@ -21,6 +22,15 @@ buy-edit-ask = نام فیلد برای ویرایش را بفرستید یا /d
 buy-discount-ask = کد تخفیف را بفرستید یا SKIP بنویسید.
 buy-discount-applied = تخفیف اعمال شد: {$amount} {$unit}
 buy-discount-invalid = کد تخفیف نامعتبر است: {$reason}
+discount-reason-not-found = کد تخفیف پیدا نشد
+discount-reason-inactive = کد تخفیف غیرفعال است
+discount-reason-not-started = زمان فعال شدن کد تخفیف نرسیده است
+discount-reason-expired = کد تخفیف منقضی شده است
+discount-reason-service-scope = این کد برای این سرویس قابل استفاده نیست
+discount-reason-min-order = مبلغ سفارش به حداقل لازم نرسیده است
+discount-reason-total-usage-limit = سقف استفاده کلی این کد تکمیل شده است
+discount-reason-user-usage-limit = سقف استفاده شما از این کد تکمیل شده است
+discount-reason-first-purchase-only = این کد فقط برای خرید اول است
 buy-pricing =
   مبلغ پایه: {$base} {$unit}
   تخفیف: {$discount} {$unit}
@@ -59,6 +69,7 @@ admin-dismiss-confirmed = سفارش رد شد و کاربر مطلع شد.
 admin-done-confirmed = سفارش تایید شد و کاربر مطلع شد.
 notification-created = اعلان زمان بندی شد.
 notification-sent = اعلان ارسال شد.
+processing = در حال پردازش...
 error-generic = خطایی رخ داد. دوباره تلاش کنید.
 rate-limit = درخواست زیاد است. کمی صبر کنید.
 action-already-processed = این عملیات قبلا انجام شده است.

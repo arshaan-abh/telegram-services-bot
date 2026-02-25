@@ -1,9 +1,25 @@
 import { eq } from "drizzle-orm";
 
+import { env } from "../src/config/env.js";
 import { closeDb, db } from "../src/db/client.js";
-import { services } from "../src/db/schema.js";
+import { services, users } from "../src/db/schema.js";
 
 async function main(): Promise<void> {
+  const adminRows = await db
+    .select()
+    .from(users)
+    .where(eq(users.telegramId, env.ADMIN_TELEGRAM_ID))
+    .limit(1);
+  if (adminRows.length === 0) {
+    console.log(
+      `Admin bootstrap sanity check: admin user ${env.ADMIN_TELEGRAM_ID} not found yet (expected before first admin interaction).`,
+    );
+  } else {
+    console.log(
+      `Admin bootstrap sanity check: found ${env.ADMIN_TELEGRAM_ID}.`,
+    );
+  }
+
   const existing = await db
     .select()
     .from(services)

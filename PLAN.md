@@ -121,7 +121,7 @@ type DiscountType = "percent" | "fixed";
 - [x] Add dev deps: `drizzle-kit`, `vitest`, `@vitest/coverage-v8`, `eslint`, `@typescript-eslint/*`, `prettier`, `tsx`, `dotenv-cli`, `tsup`.
 - [x] Configure scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `test:coverage`, `db:generate`, `db:migrate`, `db:studio`, `set:webhook`.
 - [x] Configure ESLint + Prettier integration and strict TS config.
-- [ ] Create baseline module boundaries: `config`, `bot`, `features`, `db`, `services`, `adapters`, `observability`, `security`.
+- [x] Create baseline module boundaries: `config`, `bot`, `features`, `db`, `services`, `adapters`, `observability`, `security`.
 - [x] Add `README` sections for local run, env setup, webhook setup, and testing.
 
 ## Phase 2 - Env Validation and App Configuration
@@ -137,25 +137,25 @@ type DiscountType = "percent" | "fixed";
 - [x] Define Drizzle schema files for all tables and enums.
 - [x] Add DB indices for query hot paths (user lookup, pending orders, active subscriptions, pending notifications, discount code lookup).
 - [x] Add unique constraints: `users.telegram_id`, `discount_codes.code`, `referrals.invitee_user_id`.
-- [ ] Add check constraints: non-negative pricing and credits, duration bounds (`1..255`), valid percentage ranges.
+- [x] Add check constraints: non-negative pricing and credits, duration bounds (`1..255`), valid percentage ranges.
 - [x] Add audit-friendly columns: `created_at`, `updated_at`, `created_by`, `updated_by` where needed.
 - [x] Generate initial migration with `drizzle-kit`.
-- [ ] Add seed script for admin bootstrap sanity check and optional demo service.
+- [x] Add seed script for admin bootstrap sanity check and optional demo service.
 - [x] Add transaction helpers for approval flow, credit ledger writes, and referral rewards.
 
 ## Phase 4 - Bot Runtime, Middleware, and i18n
 
 - [x] Build bot singleton factory and middleware pipeline.
-- [ ] Add middleware order: request id, logger context, sentry context, admin resolver, session, rate-limit checks, i18n, menus, conversations, error boundary.
+- [x] Add middleware order: request id, logger context, sentry context, admin resolver, session, rate-limit checks, i18n, menus, conversations, error boundary.
 - [x] Configure `@grammyjs/i18n` with `en` and `fa` files while selecting locale strictly from env.
 - [x] Create consistent message helpers with markdown-safe escaping and reusable templates.
-- [ ] Implement user-friendly loading behavior: immediate `answerCallbackQuery`, `sendChatAction`, and temporary "processing" messages for long operations.
+- [x] Implement user-friendly loading behavior: immediate `answerCallbackQuery`, `sendChatAction`, and temporary "processing" messages for long operations.
 - [x] Add global unknown-command and unknown-callback handlers.
 
 ## Phase 5 - User Features (Catalog, Buy Flow, Wallet, Referral)
 
 - [x] Build `@grammyjs/menu` user home screen with entries: services, my services, wallet, referral, channel.
-- [ ] Implement service list pagination and service detail screen (price, unit, description, notes, duration, buy button).
+- [x] Implement service list pagination and service detail screen (price, unit, description, notes, duration, buy button).
 - [x] Implement buy conversation (`@grammyjs/conversations`) steps:
 - [x] Step: create order draft with price snapshot.
 - [x] Step: load reusable needed-field profile for user+service.
@@ -176,11 +176,11 @@ type DiscountType = "percent" | "fixed";
 ## Phase 6 - Admin Features (Service CRUD, Order Review, Notifications)
 
 - [x] Build admin menu with entries: pending orders, services, discounts, notifications, audit quick-view.
-- [ ] Implement service CRUD conversations:
+- [x] Implement service CRUD conversations:
 - [x] Create service (title, price, description, notes, needed fields, duration).
-- [ ] Edit service fields with validation and confirmation.
+- [x] Edit service fields with validation and confirmation.
 - [x] Remove/deactivate service with confirmation.
-- [ ] Implement pending order review card containing:
+- [x] Implement pending order review card containing:
 - [x] User identity: telegram id, username, deep link mention.
 - [x] Service + pricing breakdown: base, discount, credit, payable.
 - [x] Needed-field values summary.
@@ -197,11 +197,11 @@ type DiscountType = "percent" | "fixed";
 
 ## Phase 7 - Discount Engine (Advanced Rules)
 
-- [ ] Implement discount code CRUD from admin menu.
+- [x] Implement discount code CRUD from admin menu.
 - [x] Support rule fields: code, type (`percent|fixed`), amount, min order amount, max discount cap, active flag, start/end window, total usage limit, per-user limit, first-purchase-only, service scope.
-- [ ] Implement deterministic validation order and user-readable rejection reasons.
+- [x] Implement deterministic validation order and user-readable rejection reasons.
 - [x] Persist redemption records per order.
-- [ ] Ensure code application is idempotent inside conversation retries.
+- [x] Ensure code application is idempotent inside conversation retries.
 - [x] Display discount impact in both user summary and admin review payload.
 
 ## Phase 8 - Referral and Credit Ledger
@@ -214,7 +214,7 @@ type DiscountType = "percent" | "fixed";
 - [x] Implement repurchase rule:
 - [x] If needed-field profile matches active subscription for same service, extend existing subscription end date.
 - [x] If profile differs, create new parallel subscription record.
-- [ ] Schedule/update reminder notifications after each activation/extension.
+- [x] Schedule/update reminder notifications after each activation/extension.
 
 ## Phase 9 - Notification System (QStash + State Tracking)
 
@@ -222,18 +222,18 @@ type DiscountType = "percent" | "fixed";
 - [x] Publish scheduled jobs to QStash with send-at time and notification id payload.
 - [x] Verify QStash signature in `/api/qstash/dispatch`.
 - [x] On dispatch, load pending notification, send Telegram message, and mark `sent`.
-- [ ] Record `failed` with retry metadata when delivery fails.
+- [x] Record `failed` with retry metadata when delivery fails.
 - [x] Implement automatic scheduling points:
 - [x] At activation: schedule reminder for `expiry - 3 days` if still in future.
 - [x] At activation: schedule ended notification at expiry timestamp.
-- [ ] Ensure idempotency keys prevent duplicate sends.
-- [ ] Implement admin manual scheduling with immediate-send shortcut that bypasses scheduling but still stores notification record.
+- [x] Ensure idempotency keys prevent duplicate sends.
+- [x] Implement admin manual scheduling with immediate-send shortcut that bypasses scheduling but still stores notification record.
 
 ## Phase 10 - Security and Abuse Resistance
 
 - [x] Enforce Telegram webhook secret token header check before parsing update body.
 - [x] Reject non-POST and invalid content-type requests.
-- [ ] Implement Upstash rate limiting:
+- [x] Implement Upstash rate limiting:
 - [x] Global per-user update throttle.
 - [x] Strict proof-upload throttle.
 - [x] Strict discount-attempt throttle.
@@ -241,29 +241,29 @@ type DiscountType = "percent" | "fixed";
 - [x] Add anti-replay/idempotency for callback and admin action buttons.
 - [x] Add authorization guards to ensure only admin can execute admin callbacks.
 - [x] Add audit logging for create/edit/delete/approve/dismiss/discount-change/notification-send.
-- [ ] Redact sensitive fields from logs and Sentry payloads.
+- [x] Redact sensitive fields from logs and Sentry payloads.
 
 ## Phase 11 - Observability and Error Handling
 
-- [ ] Implement structured logs with `pino` including request id, update id, user id, order id.
+- [x] Implement structured logs with `pino` including request id, update id, user id, order id.
 - [x] Add centralized error boundary for bot and HTTP routes.
-- [ ] Integrate Sentry capture for unhandled exceptions and rejected promises.
-- [ ] Add domain error classes for validation, authorization, state conflict, external API failure.
+- [x] Integrate Sentry capture for unhandled exceptions and rejected promises.
+- [x] Add domain error classes for validation, authorization, state conflict, external API failure.
 - [x] Ensure user-facing messages stay friendly and localized while internal logs retain diagnostics.
 - [x] Add health endpoint checks for DB and Redis connectivity.
 
 ## Phase 12 - Testing Strategy (Vitest + Bot Update Harness)
 
 - [x] Create unit tests for env validation and config defaults.
-- [ ] Create unit tests for price calculation (discount first then credit), rounding, and zero-payable branch.
-- [ ] Create unit tests for discount rule evaluator (all advanced constraints).
-- [ ] Create unit tests for referral reward calculation and ledger updates.
+- [x] Create unit tests for price calculation (discount first then credit), rounding, and zero-payable branch.
+- [x] Create unit tests for discount rule evaluator (all advanced constraints).
+- [x] Create unit tests for referral reward calculation and ledger updates.
 - [x] Create unit tests for image proof validator and order state gate.
 - [ ] Create integration tests for DB transactions:
 - [ ] Approve order creates/extends subscription correctly.
 - [ ] Dismiss order requires explanation and notifies user.
 - [ ] Repurchase same-fields extends; different-fields creates parallel subscription.
-- [ ] Create integration tests for notification lifecycle (`pending -> sent`, retry/failure path).
+- [x] Create integration tests for notification lifecycle (`pending -> sent`, retry/failure path).
 - [x] Create webhook tests:
 - [x] Reject missing/invalid Telegram secret.
 - [x] Reject invalid QStash signature.
@@ -276,13 +276,13 @@ type DiscountType = "percent" | "fixed";
 
 - [x] Add `vercel.json` routing and runtime config for API functions.
 - [x] Add deploy-time script to set Telegram webhook URL + secret.
-- [ ] Document required Vercel env vars and rotation procedure for secrets.
+- [x] Document required Vercel env vars and rotation procedure for secrets.
 - [x] Add operational runbooks:
 - [x] Payment dispute resolution via audit logs.
 - [x] Re-sending failed notifications.
 - [x] Manual credit adjustment protocol.
-- [ ] Add migration run order for production deploys.
-- [ ] Add rollback guidance for bot deploy and DB migration issues.
+- [x] Add migration run order for production deploys.
+- [x] Add rollback guidance for bot deploy and DB migration issues.
 - [ ] Validate production readiness checklist before launch.
 
 ## Test Cases and Scenarios (Acceptance)
@@ -293,14 +293,14 @@ type DiscountType = "percent" | "fixed";
 - [x] Discount code success and all major rejection reasons are correctly surfaced.
 - [x] Credit application reduces payable; zero-payable flow skips proof and still requires admin done.
 - [x] Proof upload accepts only expected image types and only in `awaiting_proof`.
-- [ ] Admin receives full order context including user info, discount info, and provided fields.
+- [x] Admin receives full order context including user info, discount info, and provided fields.
 - [x] Admin done activates service and sends user activation message.
 - [x] Admin dismiss forces explanation + final confirmation and sends explanation to user.
 - [x] Reminder fires 3 days before expiry and ended notification fires on expiry.
 - [x] Referral reward posts only after activation and updates inviter wallet.
 - [x] Webhook endpoints reject unsigned/invalid requests.
-- [ ] Rate limiting blocks proof spam and discount brute force attempts.
-- [ ] Audit logs capture all admin state-changing operations.
+- [x] Rate limiting blocks proof spam and discount brute force attempts.
+- [x] Audit logs capture all admin state-changing operations.
 
 ## Definition of Done
 

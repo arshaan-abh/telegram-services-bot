@@ -37,8 +37,37 @@ export type DiscountEvaluationResult =
   | {
       ok: false;
       discountMinor: 0n;
-      reason: string;
+      reason: DiscountRejectReason;
     };
+
+export type DiscountRejectReason =
+  | "discount_not_found"
+  | "discount_inactive"
+  | "discount_not_started"
+  | "discount_expired"
+  | "discount_service_scope"
+  | "discount_min_order"
+  | "discount_total_usage_limit"
+  | "discount_user_usage_limit"
+  | "discount_first_purchase_only";
+
+export function discountReasonToMessageKey(
+  reason: DiscountRejectReason,
+): string {
+  const map: Record<DiscountRejectReason, string> = {
+    discount_not_found: "discount-reason-not-found",
+    discount_inactive: "discount-reason-inactive",
+    discount_not_started: "discount-reason-not-started",
+    discount_expired: "discount-reason-expired",
+    discount_service_scope: "discount-reason-service-scope",
+    discount_min_order: "discount-reason-min-order",
+    discount_total_usage_limit: "discount-reason-total-usage-limit",
+    discount_user_usage_limit: "discount-reason-user-usage-limit",
+    discount_first_purchase_only: "discount-reason-first-purchase-only",
+  };
+
+  return map[reason];
+}
 
 export function evaluateDiscount(
   input: DiscountEvaluationInput,

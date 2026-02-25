@@ -83,6 +83,10 @@ export const adminMenu = new Menu<BotContext>("admin-menu")
     await ctx.answerCallbackQuery();
     await ctx.conversation.enter("editDiscountConversation");
   })
+  .text("Deactivate Discount", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.conversation.enter("deactivateDiscountConversation");
+  })
   .row()
   .text("Notifications", async (ctx) => {
     await ctx.answerCallbackQuery();

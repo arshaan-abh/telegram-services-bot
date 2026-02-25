@@ -10,7 +10,7 @@ import {
 import { listSubscriptionsByUser } from "../../db/repositories/subscriptions.js";
 import { getUserById } from "../../db/repositories/users.js";
 import type { BotContext } from "../context.js";
-import { formatSubscriptionLine } from "../messages.js";
+import { formatSubscriptionLine, withProcessingMessage } from "../messages.js";
 
 const PAGE_SIZE = 5;
 
@@ -18,36 +18,38 @@ export async function sendServicesList(
   ctx: BotContext,
   page = 0,
 ): Promise<void> {
-  const services = await listActiveServices();
-  if (services.length === 0) {
-    await ctx.reply(ctx.t("services-empty"));
-    return;
-  }
-
-  const pages = Math.max(1, Math.ceil(services.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(page, 0), pages - 1);
-  const slice = services.slice(
-    safePage * PAGE_SIZE,
-    safePage * PAGE_SIZE + PAGE_SIZE,
-  );
-
-  const keyboard = new InlineKeyboard();
-  for (const service of slice) {
-    keyboard.text(service.title, CALLBACKS.serviceView(service.id)).row();
-  }
-
-  if (pages > 1) {
-    if (safePage > 0) {
-      keyboard.text("<", CALLBACKS.servicesList(safePage - 1));
+  await withProcessingMessage(ctx, async () => {
+    const services = await listActiveServices();
+    if (services.length === 0) {
+      await ctx.reply(ctx.t("services-empty"));
+      return;
     }
-    keyboard.text(`${safePage + 1}/${pages}`, "noop");
-    if (safePage < pages - 1) {
-      keyboard.text(">", CALLBACKS.servicesList(safePage + 1));
-    }
-  }
 
-  await ctx.reply(ctx.t("services-title"), {
-    reply_markup: keyboard,
+    const pages = Math.max(1, Math.ceil(services.length / PAGE_SIZE));
+    const safePage = Math.min(Math.max(page, 0), pages - 1);
+    const slice = services.slice(
+      safePage * PAGE_SIZE,
+      safePage * PAGE_SIZE + PAGE_SIZE,
+    );
+
+    const keyboard = new InlineKeyboard();
+    for (const service of slice) {
+      keyboard.text(service.title, CALLBACKS.serviceView(service.id)).row();
+    }
+
+    if (pages > 1) {
+      if (safePage > 0) {
+        keyboard.text("<", CALLBACKS.servicesList(safePage - 1));
+      }
+      keyboard.text(`${safePage + 1}/${pages}`, "noop");
+      if (safePage < pages - 1) {
+        keyboard.text(">", CALLBACKS.servicesList(safePage + 1));
+      }
+    }
+
+    await ctx.reply(ctx.t("services-title"), {
+      reply_markup: keyboard,
+    });
   });
 }
 
@@ -55,28 +57,35 @@ export async function sendServiceDetails(
   ctx: BotContext,
   serviceId: string,
 ): Promise<void> {
-  const service = await getServiceById(serviceId);
-  if (!service || !service.isActive) {
-    await ctx.reply(ctx.t("services-empty"));
-    return;
-  }
+  await withProcessingMessage(ctx, async () => {
+    const service = await getServiceById(serviceId);
+    if (!service || !service.isActive) {
+      await ctx.reply(ctx.t("services-empty"));
+      return;
+    }
 
-  const description = service.description ?? "";
-  const details = ctx.t("service-details", {
-    title: service.title,
-    price: service.price,
-    unit: env.PRICE_UNIT,
-    duration: service.durationDays,
-    description,
-  });
+    const description = service.description ?? "";
+    const notes =
+      service.notes.length > 0
+        ? `\n\n${ctx.t("service-notes-title")}\n- ${service.notes.join("\n- ")}`
+        : "";
+    const details =
+      ctx.t("service-details", {
+        title: service.title,
+        price: service.price,
+        unit: env.PRICE_UNIT,
+        duration: service.durationDays,
+        description,
+      }) + notes;
 
-  const keyboard = new InlineKeyboard().text(
-    "Buy",
-    CALLBACKS.serviceBuy(service.id),
-  );
+    const keyboard = new InlineKeyboard().text(
+      "Buy",
+      CALLBACKS.serviceBuy(service.id),
+    );
 
-  await ctx.reply(details, {
-    reply_markup: keyboard,
+    await ctx.reply(details, {
+      reply_markup: keyboard,
+    });
   });
 }
 

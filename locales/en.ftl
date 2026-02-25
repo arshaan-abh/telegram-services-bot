@@ -13,6 +13,7 @@ service-details =
   Price: {$price} {$unit}
   Duration: {$duration} days
   {$description}
+service-notes-title = Notes:
 buy-start = Starting purchase flow...
 buy-enter-field = Please enter {$field}:
 buy-confirm-values = Confirm your values:
@@ -21,6 +22,15 @@ buy-edit-ask = Send the field name you want to edit, or type /done.
 buy-discount-ask = Send discount code or type SKIP.
 buy-discount-applied = Discount applied: {$amount} {$unit}
 buy-discount-invalid = Discount rejected: {$reason}
+discount-reason-not-found = code not found
+discount-reason-inactive = code is inactive
+discount-reason-not-started = code is not active yet
+discount-reason-expired = code has expired
+discount-reason-service-scope = code is not valid for this service
+discount-reason-min-order = order does not meet minimum amount
+discount-reason-total-usage-limit = code reached total usage limit
+discount-reason-user-usage-limit = you reached per-user usage limit
+discount-reason-first-purchase-only = code is only for first purchase
 buy-pricing =
   Base: {$base} {$unit}
   Discount: {$discount} {$unit}
@@ -59,6 +69,7 @@ admin-dismiss-confirmed = Order dismissed and user notified.
 admin-done-confirmed = Order approved and user notified.
 notification-created = Notification scheduled.
 notification-sent = Notification sent.
+processing = Processing...
 error-generic = Something went wrong. Please try again.
 rate-limit = Too many requests. Please slow down.
 action-already-processed = This action was already processed.

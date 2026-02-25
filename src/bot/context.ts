@@ -17,6 +17,7 @@ type BaseContext = Context &
   I18nFlavor & {
     isAdmin: boolean;
     dbUserId?: string;
+    requestId?: string;
   };
 
 export type BotContext = BaseContext & ConversationFlavor<BaseContext>;

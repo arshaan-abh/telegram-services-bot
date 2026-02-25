@@ -199,3 +199,55 @@ export async function editDiscountConversation(
 
   await ctx.reply(`Discount updated: ${updated.code}`);
 }
+
+export async function deactivateDiscountConversation(
+  conversation: Conversation<BotContext, BotContext>,
+  ctx: BotContext,
+): Promise<void> {
+  if (!ctx.isAdmin) {
+    await ctx.reply(ctx.t("admin-denied"));
+    return;
+  }
+
+  const discounts = await conversation.external(() => listDiscountCodes());
+  if (discounts.length === 0) {
+    await ctx.reply("No discount codes yet.");
+    return;
+  }
+
+  await ctx.reply(
+    discounts
+      .map((d) => `${d.id} | ${d.code} | active=${d.isActive}`)
+      .join("\n"),
+  );
+
+  const id = await ask(conversation, ctx, "Discount id to deactivate:");
+  const confirmation = (
+    await ask(conversation, ctx, "Type YES to confirm:")
+  ).toLowerCase();
+  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
+    await ctx.reply("Cancelled.");
+    return;
+  }
+
+  const updated = await conversation.external(() =>
+    updateDiscountCode(id, { isActive: false }, String(ctx.from?.id)),
+  );
+  if (!updated) {
+    await ctx.reply("Discount not found.");
+    return;
+  }
+
+  await conversation.external(() =>
+    createAuditLog({
+      actorTelegramId: String(ctx.from?.id),
+      actorUserId: ctx.dbUserId,
+      action: "discount.deactivate",
+      entityType: "discount",
+      entityId: updated.id,
+      metadata: { code: updated.code },
+    }),
+  );
+
+  await ctx.reply(`Discount deactivated: ${updated.code}`);
+}

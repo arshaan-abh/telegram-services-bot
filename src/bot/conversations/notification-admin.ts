@@ -63,7 +63,8 @@ export async function adminNotificationConversation(
 
   const text = await ask(conversation, ctx, "Notification text:");
   const when = await ask(conversation, ctx, "Send at (ISO date) or NOW:");
-  const sendAt = when.toUpperCase() === "NOW" ? new Date() : new Date(when);
+  const immediate = when.toUpperCase() === "NOW";
+  const sendAt = immediate ? new Date() : new Date(when);
 
   await conversation.external(() =>
     scheduleAdminNotification({
@@ -71,6 +72,7 @@ export async function adminNotificationConversation(
       audience: audienceRaw as "user" | "all" | "service_subscribers",
       text,
       sendAt,
+      immediate,
       userId: targetUserId,
       serviceId: targetServiceId,
     }),

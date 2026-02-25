@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 
 import { db } from "../client.js";
 import { notifications } from "../schema.js";
@@ -34,6 +34,16 @@ export async function createNotification(input: {
   }
 
   return created;
+}
+
+export async function findNotificationByIdempotencyKey(idempotencyKey: string) {
+  const rows = await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.idempotencyKey, idempotencyKey))
+    .limit(1);
+
+  return rows[0] ?? null;
 }
 
 export async function getNotificationById(id: string) {
@@ -98,4 +108,29 @@ export async function cancelNotification(id: string) {
     .returning();
 
   return rows[0] ?? null;
+}
+
+export async function cancelPendingSubscriptionExpiryNotifications(input: {
+  userId: string;
+  serviceId: string;
+}) {
+  return db
+    .update(notifications)
+    .set({
+      state: "cancelled",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(notifications.state, "pending"),
+        eq(notifications.audience, "user"),
+        eq(notifications.userId, input.userId),
+        eq(notifications.serviceId, input.serviceId),
+        inArray(notifications.messageKey, [
+          "subscription_reminder",
+          "subscription_ended",
+        ]),
+      ),
+    )
+    .returning();
 }

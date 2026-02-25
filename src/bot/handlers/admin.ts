@@ -7,9 +7,12 @@ import {
   listRecentAuditLogs,
 } from "../../db/repositories/audit.js";
 import { listPendingOrders } from "../../db/repositories/orders.js";
-import { createAndScheduleNotification } from "../../services/notifications.js";
+import {
+  createAndScheduleNotification,
+  dispatchNotificationById,
+} from "../../services/notifications.js";
 import type { BotContext } from "../context.js";
-import { formatAdminOrderFields } from "../messages.js";
+import { formatAdminOrderFields, withProcessingMessage } from "../messages.js";
 
 export function ensureAdmin(ctx: BotContext): boolean {
   if (!ctx.isAdmin) {
@@ -25,63 +28,65 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
     return;
   }
 
-  const pending = await listPendingOrders();
-  if (pending.length === 0) {
-    await ctx.reply(ctx.t("admin-pending-empty"));
-    return;
-  }
+  await withProcessingMessage(ctx, async () => {
+    const pending = await listPendingOrders();
+    if (pending.length === 0) {
+      await ctx.reply(ctx.t("admin-pending-empty"));
+      return;
+    }
 
-  await ctx.reply(ctx.t("admin-pending-title"));
+    await ctx.reply(ctx.t("admin-pending-title"));
 
-  for (const entry of pending) {
-    const fields = formatAdminOrderFields(entry.order.neededFieldValues);
-    const userName = entry.username ?? entry.firstName;
-    const mentionLink = `tg://user?id=${entry.userTelegramId}`;
-    const discountCode = entry.order.discountCodeText ?? "-";
-    const proofSummary = entry.order.proofFileId
-      ? `${entry.order.proofMime ?? "image"} | ${entry.order.proofSizeBytes ?? "-"} bytes`
-      : "-";
+    for (const entry of pending) {
+      const fields = formatAdminOrderFields(entry.order.neededFieldValues);
+      const userName = entry.username ?? entry.firstName;
+      const mentionLink = `tg://user?id=${entry.userTelegramId}`;
+      const discountCode = entry.order.discountCodeText ?? "-";
+      const proofSummary = entry.order.proofFileId
+        ? `${entry.order.proofMime ?? "image"} | ${entry.order.proofSizeBytes ?? "-"} bytes`
+        : "-";
 
-    const text = ctx.t("admin-order-card", {
-      orderId: entry.order.id,
-      user: `${userName} (${entry.userTelegramId})`,
-      service: entry.serviceTitle,
-      base: entry.order.basePrice,
-      discount: entry.order.discountAmount,
-      credit: entry.order.creditAmount,
-      payable: entry.order.payableAmount,
-      unit: env.PRICE_UNIT,
-      fields,
-    });
-    const enrichedText =
-      `${text}\n` +
-      `Username: ${entry.username ?? "-"}\n` +
-      `Direct: ${mentionLink}\n` +
-      `Discount code: ${discountCode}\n` +
-      `Proof: ${proofSummary}`;
+      const text = ctx.t("admin-order-card", {
+        orderId: entry.order.id,
+        user: `${userName} (${entry.userTelegramId})`,
+        service: entry.serviceTitle,
+        base: entry.order.basePrice,
+        discount: entry.order.discountAmount,
+        credit: entry.order.creditAmount,
+        payable: entry.order.payableAmount,
+        unit: env.PRICE_UNIT,
+        fields,
+      });
+      const enrichedText =
+        `${text}\n` +
+        `Username: ${entry.username ?? "-"}\n` +
+        `Direct: ${mentionLink}\n` +
+        `Discount code: ${discountCode}\n` +
+        `Proof: ${proofSummary}`;
 
-    const keyboard = new InlineKeyboard()
-      .text("Done", CALLBACKS.adminOrderDone(entry.order.id))
-      .text("Dismiss", CALLBACKS.adminOrderDismiss(entry.order.id))
-      .row()
-      .text("Contact", CALLBACKS.adminOrderContact(entry.order.id));
+      const keyboard = new InlineKeyboard()
+        .text("Done", CALLBACKS.adminOrderDone(entry.order.id))
+        .text("Dismiss", CALLBACKS.adminOrderDismiss(entry.order.id))
+        .row()
+        .text("Contact", CALLBACKS.adminOrderContact(entry.order.id));
 
-    await ctx.reply(enrichedText, {
-      reply_markup: keyboard,
-    });
+      await ctx.reply(enrichedText, {
+        reply_markup: keyboard,
+      });
 
-    if (entry.order.proofFileId && ctx.chat?.id) {
-      try {
-        await ctx.api.sendPhoto(ctx.chat.id, entry.order.proofFileId, {
-          caption: `Proof for order ${entry.order.id}`,
-        });
-      } catch {
-        await ctx.api.sendDocument(ctx.chat.id, entry.order.proofFileId, {
-          caption: `Proof for order ${entry.order.id}`,
-        });
+      if (entry.order.proofFileId && ctx.chat?.id) {
+        try {
+          await ctx.api.sendPhoto(ctx.chat.id, entry.order.proofFileId, {
+            caption: `Proof for order ${entry.order.id}`,
+          });
+        } catch {
+          await ctx.api.sendDocument(ctx.chat.id, entry.order.proofFileId, {
+            caption: `Proof for order ${entry.order.id}`,
+          });
+        }
       }
     }
-  }
+  });
 }
 
 export async function notifyAdminOrderQueued(
@@ -127,6 +132,7 @@ export async function scheduleAdminNotification(input: {
   audience: "user" | "all" | "service_subscribers";
   text: string;
   sendAt: Date;
+  immediate?: boolean;
   userId?: string;
   serviceId?: string;
 }) {
@@ -134,7 +140,7 @@ export async function scheduleAdminNotification(input: {
     return;
   }
 
-  await createAndScheduleNotification({
+  const created = await createAndScheduleNotification({
     audience: input.audience,
     userId: input.userId,
     serviceId: input.serviceId,
@@ -144,7 +150,15 @@ export async function scheduleAdminNotification(input: {
     },
     sendAt: input.sendAt,
     createdBy: String(input.ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
+    skipQueue: input.immediate === true,
   });
+
+  if (input.immediate) {
+    await dispatchNotificationById(input.ctx, created.id, {
+      retryCount: 0,
+      qstashMessageId: null,
+    });
+  }
 
   await createAuditLog({
     actorTelegramId: String(input.ctx.from?.id ?? env.ADMIN_TELEGRAM_ID),
@@ -155,8 +169,13 @@ export async function scheduleAdminNotification(input: {
     metadata: {
       audience: input.audience,
       sendAt: input.sendAt.toISOString(),
+      immediate: input.immediate === true,
     },
   });
 
-  await input.ctx.reply(input.ctx.t("notification-created"));
+  await input.ctx.reply(
+    input.immediate
+      ? input.ctx.t("notification-sent")
+      : input.ctx.t("notification-created"),
+  );
 }

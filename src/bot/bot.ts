@@ -1,5 +1,6 @@
 import { conversations, createConversation } from "@grammyjs/conversations";
 import { Bot, session } from "grammy";
+import { randomUUID } from "node:crypto";
 
 import { createRedisSessionStorage } from "../adapters/session-storage.js";
 import { env } from "../config/env.js";
@@ -19,6 +20,7 @@ import { initialSession } from "./context.js";
 import { buyConversation } from "./conversations/buy.js";
 import {
   createDiscountConversation,
+  deactivateDiscountConversation,
   editDiscountConversation,
 } from "./conversations/discount-admin.js";
 import { dismissOrderConversation } from "./conversations/dismiss-order.js";
@@ -51,6 +53,19 @@ function parseCallbackData(data: string) {
   return parts;
 }
 
+function deriveOrderIdFromCallbackData(
+  data: string | undefined,
+): string | null {
+  if (!data) {
+    return null;
+  }
+
+  const match = data.match(
+    /^v1:admin:order:(?:view|done|dismiss|contact):([a-z0-9-]+)$/i,
+  );
+  return match?.[1] ?? null;
+}
+
 async function passAdminThrottle(ctx: BotContext): Promise<boolean> {
   const telegramId = ctx.from?.id;
   if (!telegramId) {
@@ -74,6 +89,11 @@ function buildBot(): Bot<BotContext> {
     await next();
   });
 
+  bot.use(async (ctx, next) => {
+    ctx.requestId = randomUUID();
+    await next();
+  });
+
   bot.use(
     session({
       initial: initialSession,
@@ -82,9 +102,20 @@ function buildBot(): Bot<BotContext> {
     }),
   );
 
-  bot.use(i18n);
   bot.use(enrichUserContext);
   bot.use(globalRateLimit);
+  bot.use(i18n);
+
+  bot.use(async (ctx, next) => {
+    if (ctx.from) {
+      Sentry.setUser({ id: String(ctx.from.id), username: ctx.from.username });
+    } else {
+      Sentry.setUser(null);
+    }
+    Sentry.setTag("update_id", String(ctx.update.update_id));
+    Sentry.setTag("request_id", ctx.requestId ?? "unknown");
+    await next();
+  });
 
   bot.use(async (ctx, next) => {
     const callbackId = ctx.callbackQuery?.id;
@@ -105,9 +136,13 @@ function buildBot(): Bot<BotContext> {
   });
 
   bot.use(async (ctx, next) => {
+    const orderId = deriveOrderIdFromCallbackData(ctx.callbackQuery?.data);
     const logger = childLogger({
+      requestId: ctx.requestId ?? null,
       updateId: ctx.update.update_id,
       telegramId: ctx.from?.id ?? "unknown",
+      userId: ctx.dbUserId ?? null,
+      orderId,
       isAdmin: ctx.isAdmin,
     });
 
@@ -131,6 +166,7 @@ function buildBot(): Bot<BotContext> {
   bot.use(createConversation(deactivateServiceConversation));
   bot.use(createConversation(createDiscountConversation));
   bot.use(createConversation(editDiscountConversation));
+  bot.use(createConversation(deactivateDiscountConversation));
   bot.use(createConversation(adminNotificationConversation));
 
   bot.command("start", async (ctx) => {

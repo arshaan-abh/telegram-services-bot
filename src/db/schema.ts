@@ -184,6 +184,10 @@ export const discountCodes = pgTable(
       "discount_codes_min_order_non_negative",
       sql`${table.minOrderAmount} is null or ${table.minOrderAmount} >= 0`,
     ),
+    check(
+      "discount_codes_percent_amount_range",
+      sql`${table.type} <> 'percent' or (${table.amount} >= 0 and ${table.amount} <= 100)`,
+    ),
   ],
 );
 

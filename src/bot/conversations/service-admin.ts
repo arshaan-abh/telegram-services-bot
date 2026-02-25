@@ -24,6 +24,17 @@ async function ask(
   return update.message.text.trim();
 }
 
+function parseCommaList(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function isValidMoney(input: string): boolean {
+  return /^\d+(\.\d{1,2})?$/.test(input);
+}
+
 export async function createServiceConversation(
   conversation: Conversation<BotContext, BotContext>,
   ctx: BotContext,
@@ -62,15 +73,13 @@ export async function createServiceConversation(
     return;
   }
 
-  const notes = notesInput
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+  if (!isValidMoney(price)) {
+    await ctx.reply("Invalid price format");
+    return;
+  }
 
-  const neededFields = fieldsInput
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+  const notes = parseCommaList(notesInput);
+  const neededFields = parseCommaList(fieldsInput);
 
   const service = await conversation.external(() =>
     createService(
@@ -140,17 +149,51 @@ export async function editServiceConversation(
   const value = await ask(conversation, ctx, "New value:");
 
   const patch: Record<string, unknown> = {};
-  if (field === "title") patch.title = value;
-  if (field === "price") patch.price = value;
-  if (field === "description") patch.description = value === "-" ? null : value;
-  if (field === "notes")
-    patch.notes = value.split(",").map((item) => item.trim());
-  if (field === "neededFields")
-    patch.neededFields = value.split(",").map((item) => item.trim());
-  if (field === "durationDays") patch.durationDays = Number(value);
+  if (field === "title") {
+    if (value.length < 2) {
+      await ctx.reply("Title must be at least 2 characters.");
+      return;
+    }
+    patch.title = value;
+  }
+  if (field === "price") {
+    if (!isValidMoney(value)) {
+      await ctx.reply("Invalid price format");
+      return;
+    }
+    patch.price = value;
+  }
+  if (field === "description") {
+    patch.description = value === "-" ? null : value;
+  }
+  if (field === "notes") {
+    patch.notes = parseCommaList(value);
+  }
+  if (field === "neededFields") {
+    patch.neededFields = parseCommaList(value);
+  }
+  if (field === "durationDays") {
+    const duration = Number(value);
+    if (!Number.isInteger(duration) || duration < 1 || duration > 255) {
+      await ctx.reply("Duration must be an integer between 1 and 255.");
+      return;
+    }
+    patch.durationDays = duration;
+  }
 
   if (Object.keys(patch).length === 0) {
     await ctx.reply("Invalid field");
+    return;
+  }
+
+  await ctx.reply(
+    `About to update ${field} to "${value}". Type YES to confirm.`,
+  );
+  const confirmation = (
+    await ask(conversation, ctx, "Confirm update:")
+  ).toLowerCase();
+  if (!["yes", "y", "بله", "اره"].includes(confirmation)) {
+    await ctx.reply("Cancelled.");
     return;
   }
 

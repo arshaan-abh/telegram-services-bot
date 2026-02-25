@@ -4,6 +4,7 @@ import { REMINDER_DAYS_BEFORE_EXPIRY } from "../config/constants.js";
 import { env } from "../config/env.js";
 import { db } from "../db/client.js";
 import { createAuditLog } from "../db/repositories/audit.js";
+import { cancelPendingSubscriptionExpiryNotifications } from "../db/repositories/notifications.js";
 import {
   attachOrderProof,
   createOrderDraft,
@@ -322,6 +323,7 @@ export async function approveOrderByAdmin(
       startedAt: now,
       durationDays: context.service.durationDays,
       serviceTitle: context.service.title,
+      serviceId: approvedOrder.serviceId,
       userId: approvedOrder.userId,
     };
   });
@@ -333,10 +335,16 @@ export async function approveOrderByAdmin(
   const reminderDate = new Date(endDate);
   reminderDate.setDate(reminderDate.getDate() - REMINDER_DAYS_BEFORE_EXPIRY);
 
+  await cancelPendingSubscriptionExpiryNotifications({
+    userId: result.userId,
+    serviceId: result.serviceId,
+  });
+
   if (reminderDate > now) {
     await createAndScheduleNotification({
       audience: "user",
       userId: result.userId,
+      serviceId: result.serviceId,
       messageKey: "subscription_reminder",
       messagePayload: {
         serviceTitle: result.serviceTitle,
@@ -349,6 +357,7 @@ export async function approveOrderByAdmin(
   await createAndScheduleNotification({
     audience: "user",
     userId: result.userId,
+    serviceId: result.serviceId,
     messageKey: "subscription_ended",
     messagePayload: {
       serviceTitle: result.serviceTitle,
