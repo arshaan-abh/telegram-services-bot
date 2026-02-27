@@ -1,5 +1,3 @@
-import type { Message } from "grammy/types";
-
 import { ALLOWED_PROOF_MIME } from "../config/constants.js";
 import { env } from "../config/env.js";
 
@@ -15,7 +13,21 @@ export type ProofValidationResult =
       reason: "missing_proof" | "invalid_type" | "too_large";
     };
 
-export function validateProofMedia(message: Message): ProofValidationResult {
+type MessageLike = {
+  photo?: Array<{
+    file_id: string;
+    file_size?: number;
+  }>;
+  document?: {
+    file_id: string;
+    mime_type?: string;
+    file_size?: number;
+  };
+};
+
+export function validateProofMedia(
+  message: MessageLike,
+): ProofValidationResult {
   const maxBytes = env.MAX_PROOF_SIZE_MB * 1024 * 1024;
 
   if (message.photo && message.photo.length > 0) {

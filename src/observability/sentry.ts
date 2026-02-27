@@ -30,14 +30,20 @@ export function initSentry(): void {
   if (initialized || !env.SENTRY_DSN) {
     return;
   }
-  Sentry.init({
-    dsn: env.SENTRY_DSN,
+
+  // Some SDK versions type the init options without an explicit `dsn` field.
+  // Supplying DSN via process env keeps initialization compatible.
+  process.env.SENTRY_DSN = env.SENTRY_DSN;
+
+  type SentryInitOptions = NonNullable<Parameters<typeof Sentry.init>[0]>;
+  const options: SentryInitOptions = {
     environment: env.NODE_ENV,
     tracesSampleRate: 0.1,
     beforeSend(event) {
       return sanitize(event) as typeof event;
     },
-  });
+  };
+  Sentry.init(options);
 
   process.on("uncaughtException", (error) => {
     Sentry.captureException(error);
