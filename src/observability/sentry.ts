@@ -36,13 +36,13 @@ export function initSentry(): void {
   process.env.SENTRY_DSN = env.SENTRY_DSN;
 
   type SentryInitOptions = NonNullable<Parameters<typeof Sentry.init>[0]>;
-  const options: SentryInitOptions = {
+  const options = {
     environment: env.NODE_ENV,
     tracesSampleRate: 0.1,
-    beforeSend(event) {
-      return sanitize(event) as typeof event;
+    beforeSend(event: unknown) {
+      return sanitize(event);
     },
-  };
+  } as unknown as SentryInitOptions;
   Sentry.init(options);
 
   process.on("uncaughtException", (error) => {
