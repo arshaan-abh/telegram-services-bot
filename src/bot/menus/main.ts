@@ -10,6 +10,18 @@ import {
   sendWallet,
 } from "../handlers/user.js";
 
+export async function enterConversationSafely(
+  ctx: BotContext,
+  conversationId: string,
+): Promise<void> {
+  if (!ctx.conversation || typeof ctx.conversation.enter !== "function") {
+    await ctx.reply(ctx.t("error-generic"));
+    return;
+  }
+
+  await ctx.conversation.enter(conversationId);
+}
+
 export const mainMenu = new Menu<BotContext>("main-menu")
   .text(
     (ctx) => ctx.t("menu-services"),
@@ -69,21 +81,21 @@ export const adminMenu = new Menu<BotContext>("admin-menu")
     (ctx) => ctx.t("admin-menu-create-service"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("createServiceConversation");
+      await enterConversationSafely(ctx, "createServiceConversation");
     },
   )
   .text(
     (ctx) => ctx.t("admin-menu-edit-service"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("editServiceConversation");
+      await enterConversationSafely(ctx, "editServiceConversation");
     },
   )
   .text(
     (ctx) => ctx.t("admin-menu-deactivate-service"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("deactivateServiceConversation");
+      await enterConversationSafely(ctx, "deactivateServiceConversation");
     },
   )
   .row()
@@ -91,21 +103,21 @@ export const adminMenu = new Menu<BotContext>("admin-menu")
     (ctx) => ctx.t("admin-menu-create-discount"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("createDiscountConversation");
+      await enterConversationSafely(ctx, "createDiscountConversation");
     },
   )
   .text(
     (ctx) => ctx.t("admin-menu-edit-discount"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("editDiscountConversation");
+      await enterConversationSafely(ctx, "editDiscountConversation");
     },
   )
   .text(
     (ctx) => ctx.t("admin-menu-deactivate-discount"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("deactivateDiscountConversation");
+      await enterConversationSafely(ctx, "deactivateDiscountConversation");
     },
   )
   .row()
@@ -113,7 +125,7 @@ export const adminMenu = new Menu<BotContext>("admin-menu")
     (ctx) => ctx.t("admin-menu-notifications"),
     async (ctx) => {
       await ctx.answerCallbackQuery();
-      await ctx.conversation.enter("adminNotificationConversation");
+      await enterConversationSafely(ctx, "adminNotificationConversation");
     },
   )
   .text(

@@ -146,9 +146,6 @@ function buildBot(): Bot<BotContext> {
     }
   });
 
-  bot.use(mainMenu);
-  bot.use(adminMenu);
-
   bot.use(conversations());
   bot.use(createConversation(buyConversation));
   bot.use(createConversation(dismissOrderConversation));
@@ -159,6 +156,9 @@ function buildBot(): Bot<BotContext> {
   bot.use(createConversation(editDiscountConversation));
   bot.use(createConversation(deactivateDiscountConversation));
   bot.use(createConversation(adminNotificationConversation));
+
+  bot.use(mainMenu);
+  bot.use(adminMenu);
 
   bot.command("start", async (ctx) => {
     const payload = ctx.match?.trim() || undefined;
