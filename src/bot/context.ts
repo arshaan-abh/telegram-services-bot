@@ -12,15 +12,17 @@ export type SessionData = {
   dismissDraft?: DismissDraft;
 };
 
-type BaseContext = Context &
-  SessionFlavor<SessionData> &
+type RuntimeContext = Context &
   I18nFlavor & {
     isAdmin: boolean;
     dbUserId?: string;
     requestId?: string;
   };
 
-export type BotContext = BaseContext & ConversationFlavor<BaseContext>;
+export type ConversationContext = RuntimeContext;
+export type BotContext = ConversationFlavor<
+  RuntimeContext & SessionFlavor<SessionData>
+>;
 
 export function initialSession(): SessionData {
   return {};

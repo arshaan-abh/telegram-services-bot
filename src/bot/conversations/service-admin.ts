@@ -8,7 +8,7 @@ import {
   listAllServices,
   updateService,
 } from "../../db/repositories/services.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 
 const moneySchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
 const durationSchema = z.coerce.number().int().min(1).max(255);
@@ -17,8 +17,8 @@ const titleSchema = z.string().min(2);
 const CONFIRM_YES = new Set(["yes", "y", "بله", "اره"]);
 
 async function ask(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<string> {
   await ctx.reply(ctx.t(promptKey));
@@ -32,8 +32,8 @@ async function ask(
 }
 
 async function askWithSchema<T>(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
   schema: z.ZodType<T>,
   errorKey: string,
@@ -60,8 +60,8 @@ function parseCommaList(input: string): string[] {
 }
 
 export async function createServiceConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));
@@ -148,8 +148,8 @@ export async function createServiceConversation(
 }
 
 export async function editServiceConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));
@@ -264,8 +264,8 @@ export async function editServiceConversation(
 }
 
 export async function deactivateServiceConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));

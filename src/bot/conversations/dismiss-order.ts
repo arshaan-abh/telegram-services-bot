@@ -4,10 +4,10 @@ import { env } from "../../config/env.js";
 import { getOrderWithUserAndService } from "../../db/repositories/orders.js";
 import { createAndDispatchImmediateNotification } from "../../services/notifications.js";
 import { dismissOrderByAdmin } from "../../services/orders.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 
 async function waitForText(
-  conversation: Conversation<BotContext, BotContext>,
+  conversation: Conversation<BotContext, ConversationContext>,
 ): Promise<string> {
   const update = await conversation.waitFor(":text");
   if (!update.message || !("text" in update.message)) {
@@ -19,8 +19,8 @@ async function waitForText(
 }
 
 export async function dismissOrderConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   orderId: string,
 ): Promise<void> {
   if (!ctx.isAdmin) {

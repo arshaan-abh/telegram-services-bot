@@ -9,11 +9,11 @@ import {
 } from "../../db/repositories/discounts.js";
 import { listAllServices } from "../../db/repositories/services.js";
 import { normalizeDiscountCode } from "../../utils/telegram.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 
 const discountTypeSchema = z.enum(["percent", "fixed"]);
 const moneySchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
-const isoDateTimeSchema = z.string().datetime({ offset: true });
+const isoDateTimeSchema = z.iso.datetime({ offset: true });
 const usageLimitSchema = z.coerce.number().int().positive();
 
 const CONFIRM_YES = new Set(["yes", "y", "بله", "اره"]);
@@ -35,8 +35,8 @@ const EDITABLE_FIELDS = new Set([
 ]);
 
 async function ask(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<string> {
   await ctx.reply(ctx.t(promptKey));
@@ -50,8 +50,8 @@ async function ask(
 }
 
 async function askWithSchema<T>(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
   schema: z.ZodType<T>,
   errorKey: string,
@@ -69,8 +69,8 @@ async function askWithSchema<T>(
 }
 
 async function askOptionalMoney(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<string | null> {
   while (true) {
@@ -88,8 +88,8 @@ async function askOptionalMoney(
 }
 
 async function askOptionalDate(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<Date | null> {
   while (true) {
@@ -108,8 +108,8 @@ async function askOptionalDate(
 }
 
 async function askOptionalUsageLimit(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<number | null> {
   while (true) {
@@ -128,8 +128,8 @@ async function askOptionalUsageLimit(
 }
 
 async function askDiscountCode(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<string> {
   while (true) {
@@ -172,7 +172,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 function formatServiceList(
-  ctx: BotContext,
+  ctx: ConversationContext,
   services: Array<{ id: string; title: string }>,
 ): string {
   if (services.length === 0) {
@@ -190,7 +190,7 @@ function formatServiceList(
 }
 
 function formatDiscountList(
-  ctx: BotContext,
+  ctx: ConversationContext,
   discounts: Array<{ id: string; code: string; isActive: boolean }>,
 ): string {
   return discounts
@@ -207,8 +207,8 @@ function formatDiscountList(
 }
 
 export async function createDiscountConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));
@@ -327,8 +327,8 @@ export async function createDiscountConversation(
 }
 
 export async function editDiscountConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));
@@ -501,8 +501,8 @@ export async function editDiscountConversation(
 }
 
 export async function deactivateDiscountConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));

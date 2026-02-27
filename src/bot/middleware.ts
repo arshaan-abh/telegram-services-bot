@@ -3,15 +3,27 @@ import type { MiddlewareFn } from "grammy";
 import { env } from "../config/env.js";
 import { upsertTelegramUser } from "../db/repositories/users.js";
 import { checkRateLimit } from "../security/rate-limit.js";
-import type { BotContext } from "./context.js";
+import type { BotContext, ConversationContext } from "./context.js";
 
-export const enrichUserContext: MiddlewareFn<BotContext> = async (
-  ctx,
-  next,
-) => {
+type EnrichedContext = {
+  from?: {
+    id: number;
+    username?: string;
+    first_name: string;
+    last_name?: string;
+  };
+  dbUserId?: string;
+  isAdmin: boolean;
+};
+
+async function hydrateUserContext(
+  ctx: EnrichedContext,
+  next: () => Promise<void>,
+): Promise<void> {
   const from = ctx.from;
   if (!from) {
-    return next();
+    await next();
+    return;
   }
 
   const dbUser = await upsertTelegramUser({
@@ -25,6 +37,13 @@ export const enrichUserContext: MiddlewareFn<BotContext> = async (
   ctx.isAdmin = String(from.id) === env.ADMIN_TELEGRAM_ID;
 
   await next();
+}
+
+export const enrichUserContext: MiddlewareFn<BotContext> = async (
+  ctx,
+  next,
+) => {
+  await hydrateUserContext(ctx, next);
 };
 
 export const globalRateLimit: MiddlewareFn<BotContext> = async (ctx, next) => {
@@ -41,4 +60,10 @@ export const globalRateLimit: MiddlewareFn<BotContext> = async (ctx, next) => {
   }
 
   await next();
+};
+
+export const enrichConversationContext: MiddlewareFn<
+  ConversationContext
+> = async (ctx, next) => {
+  await hydrateUserContext(ctx, next);
 };

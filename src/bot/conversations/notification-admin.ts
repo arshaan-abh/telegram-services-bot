@@ -3,15 +3,15 @@ import { z } from "zod";
 
 import { listAllServices } from "../../db/repositories/services.js";
 import { getUserByTelegramId } from "../../db/repositories/users.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 import { scheduleAdminNotification } from "../handlers/admin.js";
 
 const audienceSchema = z.enum(["user", "all", "service_subscribers"]);
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 
 async function ask(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   promptKey: string,
 ): Promise<string> {
   await ctx.reply(ctx.t(promptKey));
@@ -25,8 +25,8 @@ async function ask(
 }
 
 export async function adminNotificationConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
 ): Promise<void> {
   if (!ctx.isAdmin) {
     await ctx.reply(ctx.t("admin-denied"));

@@ -31,7 +31,7 @@ import { dbMoneyToMinor, minorToDbMoney } from "../../utils/db-money.js";
 import { checksum } from "../../utils/hash.js";
 import { decodeRedisJson } from "../../utils/redis-json.js";
 import { normalizeDiscountCode } from "../../utils/telegram.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 import { notifyAdminOrderQueued } from "../handlers/admin.js";
 
 function stringifyNeededValues(values: Record<string, string>): string {
@@ -41,7 +41,7 @@ function stringifyNeededValues(values: Record<string, string>): string {
 }
 
 async function waitForText(
-  conversation: Conversation<BotContext, BotContext>,
+  conversation: Conversation<BotContext, ConversationContext>,
 ): Promise<string> {
   const update = await conversation.waitFor(":text");
   if (!update.message || !("text" in update.message)) {
@@ -65,8 +65,8 @@ type CachedDiscountDecision =
     };
 
 export async function buyConversation(
-  conversation: Conversation<BotContext, BotContext>,
-  ctx: BotContext,
+  conversation: Conversation<BotContext, ConversationContext>,
+  ctx: ConversationContext,
   serviceId: string,
 ): Promise<void> {
   if (!ctx.dbUserId) {

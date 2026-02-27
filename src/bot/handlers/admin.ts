@@ -16,10 +16,12 @@ import {
   createAndScheduleNotification,
   dispatchNotificationById,
 } from "../../services/notifications.js";
-import type { BotContext } from "../context.js";
+import type { BotContext, ConversationContext } from "../context.js";
 import { formatAdminOrderFields, withProcessingMessage } from "../messages.js";
 
-export function ensureAdmin(ctx: BotContext): boolean {
+type AdminContext = BotContext | ConversationContext;
+
+export function ensureAdmin(ctx: AdminContext): boolean {
   if (!ctx.isAdmin) {
     void ctx.reply(ctx.t("admin-denied"));
     return false;
@@ -107,7 +109,7 @@ export async function sendPendingOrders(ctx: BotContext): Promise<void> {
 }
 
 export async function notifyAdminOrderQueued(
-  ctx: BotContext,
+  ctx: AdminContext,
   orderId: string,
 ): Promise<void> {
   let admin = await getUserByTelegramId(env.ADMIN_TELEGRAM_ID);
@@ -152,7 +154,7 @@ export async function sendAuditQuickView(ctx: BotContext): Promise<void> {
 }
 
 export async function scheduleAdminNotification(input: {
-  ctx: BotContext;
+  ctx: AdminContext;
   audience: "user" | "all" | "service_subscribers";
   text: string;
   sendAt: Date;

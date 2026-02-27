@@ -26,6 +26,7 @@ import {
 } from "./callbacks.js";
 import type { BotContext } from "./context.js";
 import { initialSession } from "./context.js";
+import { buildConversationPlugins } from "./conversation-plugins.js";
 import { buyConversation } from "./conversations/buy.js";
 import {
   createDiscountConversation,
@@ -146,7 +147,11 @@ function buildBot(): Bot<BotContext> {
     }
   });
 
-  bot.use(conversations());
+  bot.use(
+    conversations({
+      plugins: buildConversationPlugins(),
+    }),
+  );
   bot.use(createConversation(buyConversation));
   bot.use(createConversation(dismissOrderConversation));
   bot.use(createConversation(createServiceConversation));
