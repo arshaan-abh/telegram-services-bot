@@ -14,6 +14,7 @@ import {
 import { listSubscribersByService } from "../db/repositories/subscriptions.js";
 import { getUserById, listAllUsers } from "../db/repositories/users.js";
 import { checksum } from "../utils/hash.js";
+import { addVercelProtectionBypassToUrl } from "../utils/vercel-protection.js";
 import { reconcileExpiredSubscriptions } from "./subscriptions.js";
 
 function renderNotificationText(
@@ -196,7 +197,9 @@ export async function createAndScheduleNotification(
 
   if (!input.skipQueue) {
     await qstash.publishJSON({
-      url: `${env.APP_BASE_URL}/api/qstash/dispatch`,
+      url: addVercelProtectionBypassToUrl(
+        `${env.APP_BASE_URL}/api/qstash/dispatch`,
+      ),
       body: {
         notificationId: notification.id,
       },

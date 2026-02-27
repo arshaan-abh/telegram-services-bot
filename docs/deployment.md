@@ -28,6 +28,7 @@
 - [ ] Required Vercel environment variables are present.
 - [ ] Webhook endpoint is configured with valid secret token.
 - [ ] QStash signatures verify successfully in `/api/qstash/dispatch`.
+- [ ] If Vercel Deployment Protection is enabled, `VERCEL_PROTECTION_BYPASS_SECRET` is configured.
 - [ ] If Sentry is enabled, `SENTRY_DSN` is configured and errors are visible.
 - [ ] Health endpoint reports DB and Redis as `up`.
 - [ ] Runbooks are available to on-call responders.

@@ -5,6 +5,10 @@ import { sql } from "drizzle-orm";
 import { redis } from "../src/adapters/upstash.js";
 import { env } from "../src/config/env.js";
 import { closeDb, db } from "../src/db/client.js";
+import {
+  addVercelProtectionBypassToUrl,
+  createVercelProtectionBypassHeaders,
+} from "../src/utils/vercel-protection.js";
 
 type ReadinessCheck = {
   name: string;
@@ -95,9 +99,16 @@ async function checkRedisConnectivity(): Promise<string> {
 }
 
 async function checkHealthEndpoint(): Promise<string> {
-  const response = await fetch(`${env.APP_BASE_URL}/api/health`);
+  const healthUrl = addVercelProtectionBypassToUrl(
+    `${env.APP_BASE_URL}/api/health`,
+  );
+  const response = await fetch(healthUrl, {
+    headers: createVercelProtectionBypassHeaders(),
+  });
   if (!response.ok) {
-    throw new Error(`Health endpoint returned HTTP ${response.status}`);
+    throw new Error(
+      `Health endpoint returned HTTP ${response.status} for ${healthUrl}`,
+    );
   }
 
   const payload = (await response.json()) as HealthResponse;
@@ -120,7 +131,9 @@ async function checkTelegramWebhookConfiguration(): Promise<string> {
     );
   }
 
-  const expectedUrl = `${env.APP_BASE_URL}/api/telegram/webhook`;
+  const expectedUrl = addVercelProtectionBypassToUrl(
+    `${env.APP_BASE_URL}/api/telegram/webhook`,
+  );
   const actualUrl = payload.result.url ?? "";
   if (actualUrl !== expectedUrl) {
     throw new Error(

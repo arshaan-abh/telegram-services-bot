@@ -72,6 +72,7 @@ export const envSchema = z.object({
     .default("info"),
   SENTRY_DSN: optionalUrl,
   INTERNAL_WEBHOOK_SETUP_TOKEN: optionalMinLengthString(16),
+  VERCEL_PROTECTION_BYPASS_SECRET: optionalMinLengthString(1),
 });
 
 export function parseEnvironment(rawEnv: NodeJS.ProcessEnv) {

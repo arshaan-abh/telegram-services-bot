@@ -1,7 +1,10 @@
 import { env } from "../src/config/env.js";
+import { addVercelProtectionBypassToUrl } from "../src/utils/vercel-protection.js";
 
 async function main(): Promise<void> {
-  const webhookUrl = `${env.APP_BASE_URL}/api/telegram/webhook`;
+  const webhookUrl = addVercelProtectionBypassToUrl(
+    `${env.APP_BASE_URL}/api/telegram/webhook`,
+  );
   const endpoint = `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook`;
 
   const response = await fetch(endpoint, {

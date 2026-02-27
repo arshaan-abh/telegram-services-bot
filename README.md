@@ -68,6 +68,7 @@ Production-ready Telegram bot built with TypeScript, grammY, Vercel, Neon Postgr
 - `LOG_LEVEL` (default: `info`)
 - `SENTRY_DSN`
 - `INTERNAL_WEBHOOK_SETUP_TOKEN`
+- `VERCEL_PROTECTION_BYPASS_SECRET` (for bypassing Vercel Security Checkpoint on automation/webhook endpoints)
 
 ### Secret Rotation Procedure
 

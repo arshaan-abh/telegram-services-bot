@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getBot } from "../../src/bot/bot.js";
 import { env } from "../../src/config/env.js";
 import { withApiErrorBoundary } from "../../src/utils/api-handler.js";
+import { addVercelProtectionBypassToUrl } from "../../src/utils/vercel-protection.js";
 
 async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -21,7 +22,9 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
     return;
   }
 
-  const webhookUrl = `${env.APP_BASE_URL}/api/telegram/webhook`;
+  const webhookUrl = addVercelProtectionBypassToUrl(
+    `${env.APP_BASE_URL}/api/telegram/webhook`,
+  );
 
   await getBot().api.setWebhook(webhookUrl, {
     secret_token: env.TELEGRAM_WEBHOOK_SECRET,
