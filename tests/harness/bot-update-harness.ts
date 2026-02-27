@@ -2,6 +2,7 @@ import type { RawApi } from "grammy";
 import type { Update } from "grammy/types";
 
 import { getBot } from "../../src/bot/bot.js";
+import { ensureBotInitialized } from "../../src/bot/init.js";
 
 type CapturedCall = {
   method: keyof RawApi;
@@ -30,6 +31,7 @@ export async function runBotUpdate(update: Update): Promise<CapturedCall[]> {
     return Promise.resolve(true as never);
   });
 
+  await ensureBotInitialized(bot);
   await bot.handleUpdate(update);
   return calls;
 }

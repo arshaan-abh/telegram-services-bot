@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { getBot } from "../../src/bot/bot.js";
+import { ensureBotInitialized } from "../../src/bot/init.js";
 import { verifyTelegramSecretToken } from "../../src/security/webhook.js";
 import { withApiErrorBoundary } from "../../src/utils/api-handler.js";
 import { readRawBody } from "../../src/utils/http.js";
@@ -26,11 +27,13 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   }
 
   const rawBody = await readRawBody(req);
+  const bot = getBot();
+  await ensureBotInitialized(bot);
   const update = JSON.parse(rawBody) as Parameters<
     ReturnType<typeof getBot>["handleUpdate"]
   >[0];
 
-  await getBot().handleUpdate(update);
+  await bot.handleUpdate(update);
 
   res.status(200).json({ ok: true });
 }
