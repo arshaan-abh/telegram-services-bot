@@ -99,4 +99,60 @@ describe("env validation", () => {
     expect(parsed.data.LOG_LEVEL).toBe("debug");
     expect(parsed.data.INTERNAL_WEBHOOK_SETUP_TOKEN).toBe("1234567890abcdef");
   });
+
+  it("treats empty optional Sentry DSN as unset", () => {
+    const parsed = parseEnvironment({
+      BOT_TOKEN: "123:token",
+      TELEGRAM_WEBHOOK_SECRET: "secret_1234567890123456",
+      ADMIN_TELEGRAM_ID: "123",
+      BOT_NAME: "TestBot",
+      CARD_NUMBER: "4111111111111111",
+      REFERRAL_PERCENT: "10",
+      DATABASE_URL: "https://db.example.com",
+      UPSTASH_REDIS_REST_URL: "https://redis.example.com",
+      UPSTASH_REDIS_REST_TOKEN: "token",
+      QSTASH_TOKEN: "token",
+      QSTASH_CURRENT_SIGNING_KEY: "current",
+      QSTASH_NEXT_SIGNING_KEY: "next",
+      APP_BASE_URL: "https://example.com",
+      MAIN_CHANNEL_URL: "https://t.me/example",
+      PRICE_UNIT: "dollar",
+      SENTRY_DSN: "",
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+
+    expect(parsed.data.SENTRY_DSN).toBeUndefined();
+  });
+
+  it("treats empty optional internal webhook setup token as unset", () => {
+    const parsed = parseEnvironment({
+      BOT_TOKEN: "123:token",
+      TELEGRAM_WEBHOOK_SECRET: "secret_1234567890123456",
+      ADMIN_TELEGRAM_ID: "123",
+      BOT_NAME: "TestBot",
+      CARD_NUMBER: "4111111111111111",
+      REFERRAL_PERCENT: "10",
+      DATABASE_URL: "https://db.example.com",
+      UPSTASH_REDIS_REST_URL: "https://redis.example.com",
+      UPSTASH_REDIS_REST_TOKEN: "token",
+      QSTASH_TOKEN: "token",
+      QSTASH_CURRENT_SIGNING_KEY: "current",
+      QSTASH_NEXT_SIGNING_KEY: "next",
+      APP_BASE_URL: "https://example.com",
+      MAIN_CHANNEL_URL: "https://t.me/example",
+      PRICE_UNIT: "dollar",
+      INTERNAL_WEBHOOK_SETUP_TOKEN: "",
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+
+    expect(parsed.data.INTERNAL_WEBHOOK_SETUP_TOKEN).toBeUndefined();
+  });
 });

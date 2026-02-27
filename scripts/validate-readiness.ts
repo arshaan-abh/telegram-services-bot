@@ -133,7 +133,7 @@ async function checkTelegramWebhookConfiguration(): Promise<string> {
 
 function checkSentryConfiguration(): string {
   if (!env.SENTRY_DSN) {
-    throw new Error("SENTRY_DSN is not configured");
+    return "SENTRY_DSN is not configured (optional)";
   }
   return "SENTRY_DSN is configured";
 }

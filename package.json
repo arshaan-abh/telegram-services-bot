@@ -13,7 +13,7 @@
     "format": "prettier . --write",
     "lint": "eslint .",
     "ops:readiness": "tsx scripts/validate-readiness.ts",
-    "set:webhook": "tsx scripts/set-webhook.ts",
+    "set:webhook": "tsx --env-file-if-exists=.env scripts/set-webhook.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",

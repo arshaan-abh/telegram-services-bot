@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+function emptyStringToUndefined(value: unknown): unknown {
+  if (typeof value === "string" && value.trim().length === 0) {
+    return undefined;
+  }
+
+  return value;
+}
+
+const optionalUrl = z.preprocess(
+  emptyStringToUndefined,
+  z.string().url().optional(),
+);
+
+const optionalMinLengthString = (min: number) =>
+  z.preprocess(emptyStringToUndefined, z.string().min(min).optional());
+
 const bigintString = z
   .string()
   .regex(/^\d+$/, "must be a positive integer")
@@ -54,8 +70,8 @@ export const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
-  SENTRY_DSN: z.string().url().optional(),
-  INTERNAL_WEBHOOK_SETUP_TOKEN: z.string().min(16).optional(),
+  SENTRY_DSN: optionalUrl,
+  INTERNAL_WEBHOOK_SETUP_TOKEN: optionalMinLengthString(16),
 });
 
 export function parseEnvironment(rawEnv: NodeJS.ProcessEnv) {
