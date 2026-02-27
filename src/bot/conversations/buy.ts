@@ -29,6 +29,7 @@ import {
 import { validateProofMedia } from "../../services/proof-validation.js";
 import { dbMoneyToMinor, minorToDbMoney } from "../../utils/db-money.js";
 import { checksum } from "../../utils/hash.js";
+import { decodeRedisJson } from "../../utils/redis-json.js";
 import { normalizeDiscountCode } from "../../utils/telegram.js";
 import type { BotContext } from "../context.js";
 import { notifyAdminOrderQueued } from "../handlers/admin.js";
@@ -162,11 +163,9 @@ export async function buyConversation(
       );
       if (!reserved) {
         const cachedRaw = await conversation.external(() =>
-          redis.get<string>(resultKey),
+          redis.get<unknown>(resultKey),
         );
-        if (cachedRaw) {
-          cachedDecision = JSON.parse(cachedRaw) as CachedDiscountDecision;
-        }
+        cachedDecision = decodeRedisJson<CachedDiscountDecision>(cachedRaw);
       }
 
       if (cachedDecision) {

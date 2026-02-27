@@ -1,5 +1,6 @@
 import type { StorageAdapter } from "grammy";
 
+import { decodeRedisJson } from "../utils/redis-json.js";
 import { redis } from "./upstash.js";
 
 export function createRedisSessionStorage<T>(
@@ -7,12 +8,18 @@ export function createRedisSessionStorage<T>(
 ): StorageAdapter<T> {
   return {
     read: async (key) => {
-      const value = await redis.get<string>(`${prefix}:${key}`);
-      if (!value) {
+      const namespacedKey = `${prefix}:${key}`;
+      const value = await redis.get<unknown>(namespacedKey);
+      const parsed = decodeRedisJson<T>(value);
+
+      if (parsed === null) {
+        if (value !== null && value !== undefined) {
+          await redis.del(namespacedKey);
+        }
         return undefined;
       }
 
-      return JSON.parse(value) as T;
+      return parsed;
     },
     write: async (key, value) => {
       await redis.set(`${prefix}:${key}`, JSON.stringify(value));
